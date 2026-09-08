@@ -7,7 +7,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: { three: ['three'], supabase: ['@supabase/supabase-js'] },
+        manualChunks(id: string) { if (id.includes('node_modules/three')) return 'three'; if (id.includes('@supabase')) return 'supabase'; },
       },
     },
   },
