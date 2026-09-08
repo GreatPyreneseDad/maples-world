@@ -1,0 +1,71 @@
+import type { GenieBackend } from './GenieAgent';
+import type { GenieEvent, GenieRequest, ToolCall, BlockName, Vec3 } from '../../shared/genie-tools';
+import { BLOCK_NAMES } from '../../shared/genie-tools';
+
+/**
+ * No-backend fallback so the game is playable before Supabase/Claude are wired.
+ * Understands a handful of shapes. It is deliberately dumb; the real genie is the Edge Function.
+ */
+export class OfflineGenie implements GenieBackend {
+  async *step(req: GenieRequest): AsyncIterable<GenieEvent> {
+    const last = [...req.messages].reverse().find((m: any) => m.role === 'user' && typeof m.content === 'string') as any;
+    const text: string = (last?.content ?? '').toLowerCase();
+    const say = (t: string): GenieEvent => ({ type: 'text', delta: t });
+    const calls: ToolCall[] = [];
+    let id = 0;
+    const call = <N extends ToolCall['name']>(name: N, input: ToolCall<N>['input']) => calls.push({ id: `off_${++id}`, name, input } as ToolCall);
+
+    const color = (BLOCK_NAMES.find(b => b !== 'air' && text.includes(b)) ?? null) as BlockName | null;
+    const c = req.context;
+    const base: Vec3 = c.target ?? { x: Math.round(c.player.x + c.facing.x * 6), y: c.surfaceY, z: Math.round(c.player.z + c.facing.z * 6) };
+    const groundY = c.target ? c.target.y : c.surfaceY;
+    const y0 = groundY + 1;
+
+    if (/undo|oops|wrong|take it back/.test(text)) { yield say('Poof — undone!'); call('undo', { steps: 1 }); }
+    else if (/house|home|hut|cabin/.test(text)) {
+      yield say('One cozy house, coming up!');
+      const w = color ?? 'planks';
+      call('fill', { from: { x: base.x - 3, y: y0, z: base.z - 3 }, to: { x: base.x + 3, y: y0 + 3, z: base.z + 3 }, block: w, hollow: true });
+      call('fill', { from: { x: base.x - 4, y: y0 + 4, z: base.z - 4 }, to: { x: base.x + 4, y: y0 + 4, z: base.z + 4 }, block: 'brick' });
+      call('fill', { from: { x: base.x - 3, y: y0 + 5, z: base.z - 3 }, to: { x: base.x + 3, y: y0 + 5, z: base.z + 3 }, block: 'brick' });
+      call('fill', { from: { x: base.x - 2, y: y0 + 6, z: base.z - 2 }, to: { x: base.x + 2, y: y0 + 6, z: base.z + 2 }, block: 'brick' });
+      call('clear', { from: { x: base.x, y: y0, z: base.z - 3 }, to: { x: base.x, y: y0 + 1, z: base.z - 3 } });
+      call('set_block', { pos: { x: base.x - 3, y: y0 + 1, z: base.z }, block: 'glass' });
+      call('set_block', { pos: { x: base.x + 3, y: y0 + 1, z: base.z }, block: 'glass' });
+    } else if (/tree/.test(text)) {
+      yield say('Growing a tree for you!');
+      call('cylinder', { base: { x: base.x, y: y0, z: base.z }, radius: 0, height: 5, block: 'wood' });
+      call('sphere', { center: { x: base.x, y: y0 + 6, z: base.z }, radius: 3, block: (color ?? 'leaves') });
+    } else if (/tower|castle/.test(text)) {
+      yield say('A tower fit for royalty!');
+      call('cylinder', { base: { x: base.x, y: y0, z: base.z }, radius: 4, height: 12, block: color ?? 'cobble', hollow: true });
+      call('cylinder', { base: { x: base.x, y: y0 + 12, z: base.z }, radius: 5, height: 1, block: 'stone' });
+    } else if (/rainbow/.test(text)) {
+      yield say('Rainbow time!');
+      const cols: BlockName[] = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];
+      cols.forEach((b, i) => {
+        const r = 12 - i;
+        const cx = base.x, cz = base.z;
+        for (let a = 0; a < 6; a++) {
+          const t0 = (a / 6) * Math.PI, t1 = ((a + 1) / 6) * Math.PI;
+          call('line', { from: { x: Math.round(cx + Math.cos(t0) * r), y: Math.round(y0 + Math.sin(t0) * r), z: cz }, to: { x: Math.round(cx + Math.cos(t1) * r), y: Math.round(y0 + Math.sin(t1) * r), z: cz }, block: b });
+        }
+      });
+    } else if (/ball|sphere|orb/.test(text)) {
+      yield say('One shiny orb!');
+      call('sphere', { center: { x: base.x, y: y0 + 4, z: base.z }, radius: 4, block: color ?? 'diamond' });
+    } else if (/wall/.test(text)) {
+      yield say('Wall, rising!');
+      call('fill', { from: { x: base.x - 5, y: y0, z: base.z }, to: { x: base.x + 5, y: y0 + 3, z: base.z }, block: color ?? 'brick' });
+    } else if (/clear|flatten|remove/.test(text)) {
+      yield say('Clearing the way!');
+      call('clear', { from: { x: base.x - 6, y: y0, z: base.z - 6 }, to: { x: base.x + 6, y: y0 + 12, z: base.z + 6 } });
+    } else {
+      yield say("I'm the offline genie — I only know house, tree, tower, rainbow, ball, wall, clear, and undo. Connect me to Claude and I'll build anything!");
+    }
+
+    for (const tc of calls) yield { type: 'tool_call', call: tc };
+    // Offline genie never needs a second step.
+    yield { type: 'turn_end', stopReason: 'end_turn', assistantMessage: { role: 'assistant', content: [{ type: 'text', text: '(offline genie acted)' }] } };
+  }
+}

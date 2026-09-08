@@ -1,0 +1,25 @@
+{
+  "name": "maples-world",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Maple's World — a browser voxel sandbox where a rainbow-horned unicorn genie builds what you imagine.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test:smoke": "playwright test",
+    "deploy:genie": "node scripts/deploy-genie.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "three": "^0.185.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/three": "^0.185.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  }
+}

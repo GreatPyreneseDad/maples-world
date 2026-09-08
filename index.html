@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maple's World</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpolygon points='16,2 22,30 10,30' fill='%23f07ac0'/%3E%3C/svg%3E" />
+  <style>
+    :root { --ui: rgba(20, 16, 32, 0.72); --ink: #f7f3ff; --accent: #f07ac0; --accent2: #7fe7ff; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    html, body { margin: 0; height: 100%; background: #0b0a14; overflow: hidden; color: var(--ink); }
+    #app { position: fixed; inset: 0; }
+    canvas { display: block; }
+    #crosshair { position: fixed; left: 50%; top: 50%; width: 18px; height: 18px; transform: translate(-50%, -50%); pointer-events: none; }
+    #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255,255,255,0.85); mix-blend-mode: difference; }
+    #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
+    #crosshair::after { top: 8px; left: 0; width: 18px; height: 2px; }
+
+    #hotbar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; background: var(--ui); border-radius: 12px; backdrop-filter: blur(6px); }
+    .slot { width: 46px; height: 46px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.18); display: grid; place-items: center; font-size: 11px; position: relative; overflow: hidden; }
+    .slot .swatch { width: 28px; height: 28px; border-radius: 5px; box-shadow: inset 0 -6px rgba(0,0,0,0.25), inset 0 3px rgba(255,255,255,0.25); }
+    .slot .label { position: absolute; bottom: 2px; left: 0; right: 0; text-align: center; opacity: 0.7; font-size: 9px; }
+    .slot.active { border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(127,231,255,0.35); }
+    .slot.lamp .swatch { background: radial-gradient(circle at 40% 35%, #fff6c8, #f3c53d 55%, #a8731a); border-radius: 50% 50% 40% 40%; }
+
+    #hud { position: fixed; top: 12px; left: 12px; font-size: 12px; line-height: 1.5; background: var(--ui); padding: 8px 10px; border-radius: 10px; opacity: 0.85; pointer-events: none; }
+    #hint { position: fixed; top: 12px; right: 12px; font-size: 12px; background: var(--ui); padding: 8px 10px; border-radius: 10px; opacity: 0.85; max-width: 300px; }
+    #hint kbd { background: rgba(255,255,255,0.12); padding: 0 5px; border-radius: 4px; font-family: inherit; }
+
+    #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(40,20,70,0.55), rgba(10,8,20,0.92)); cursor: pointer; z-index: 5; }
+    #overlay h1 { font-size: 44px; margin: 0 0 8px; letter-spacing: 0.5px; background: linear-gradient(90deg, #ff3b3b, #ff8c2a, #ffe23a, #3ad46a, #3a8cff, #9b4bff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #overlay p { margin: 4px 0; opacity: 0.85; }
+    #overlay .card { text-align: center; padding: 28px 36px; background: var(--ui); border-radius: 18px; backdrop-filter: blur(8px); }
+    #overlay[hidden] { display: none; }
+
+    #chat { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); width: min(560px, 92vw); background: var(--ui); border-radius: 14px; backdrop-filter: blur(8px); box-shadow: 0 10px 40px rgba(0,0,0,0.45); border: 1px solid rgba(240,122,192,0.35); z-index: 4; }
+    #chat[hidden] { display: none; }
+    #chat header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    #chat header .horn { width: 10px; height: 18px; background: linear-gradient(180deg, #ff3b3b, #ffe23a, #3ad46a, #3a8cff, #9b4bff); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+    #chat header .status { margin-left: auto; opacity: 0.7; font-size: 11px; }
+    #chat .log { max-height: 220px; overflow-y: auto; padding: 8px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+    #chat .msg { padding: 6px 10px; border-radius: 10px; max-width: 90%; white-space: pre-wrap; }
+    #chat .msg.user { align-self: flex-end; background: rgba(127,231,255,0.18); }
+    #chat .msg.genie { align-self: flex-start; background: rgba(240,122,192,0.2); }
+    #chat .msg.tool { align-self: flex-start; font-size: 11px; opacity: 0.65; font-family: ui-monospace, monospace; padding: 2px 8px; }
+    #chat .msg.err { background: rgba(255,80,80,0.25); }
+    #chat form { display: flex; gap: 8px; padding: 8px; }
+    #chat input { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: var(--ink); padding: 10px 12px; border-radius: 10px; font-size: 14px; outline: none; }
+    #chat input:focus { border-color: var(--accent); }
+    #chat button { background: linear-gradient(135deg, var(--accent), #9b4bff); color: white; border: 0; border-radius: 10px; padding: 0 16px; font-weight: 600; cursor: pointer; }
+    #chat button:disabled { opacity: 0.5; cursor: default; }
+    #toast { position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%); background: var(--ui); padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="crosshair"></div>
+  <div id="hud"></div>
+  <div id="hint">
+    <div><kbd>W A S D</kbd> move · <kbd>Space</kbd> jump · <kbd>Space×2</kbd> fly</div>
+    <div><kbd>LMB</kbd> break · <kbd>RMB</kbd> place · <kbd>1–9</kbd>/<kbd>wheel</kbd> pick</div>
+    <div><kbd>RMB</kbd> with the <b>lamp</b> summons the genie · <kbd>Esc</kbd> closes</div>
+  </div>
+  <div id="hotbar"></div>
+  <div id="toast"></div>
+
+  <div id="chat" hidden>
+    <header><span class="horn"></span><span>Genie</span><span class="status" id="chat-status">ready</span></header>
+    <div class="log" id="chat-log"></div>
+    <form id="chat-form" autocomplete="off">
+      <input id="chat-input" placeholder="Tell the genie what to build…" maxlength="500" />
+      <button id="chat-send" type="submit">Wish</button>
+    </form>
+  </div>
+
+  <div id="overlay">
+    <div class="card">
+      <h1>Maple's World</h1>
+      <p>A sandbox where a rainbow-horned genie builds what you imagine.</p>
+      <p style="margin-top:14px"><b>Click to play</b></p>
+      <p id="overlay-status" style="font-size:12px;opacity:0.6"></p>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
