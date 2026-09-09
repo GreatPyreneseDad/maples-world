@@ -6,15 +6,16 @@ export const LAMP_ITEM = -1;
 export const GOGGLES_ITEM = -2;
 export const MICROSCOPE_ITEM = -3;
 export const SHRINK_ITEM = -4;
-const TOOL_CLASS: Record<number, string> = { [LAMP_ITEM]: 'lamp', [GOGGLES_ITEM]: 'goggles', [MICROSCOPE_ITEM]: 'microscope', [SHRINK_ITEM]: 'shrink' };
-const TOOL_LABEL: Record<number, string> = { [LAMP_ITEM]: 'lamp', [GOGGLES_ITEM]: 'goggles', [MICROSCOPE_ITEM]: 'scope', [SHRINK_ITEM]: 'shrink' };
+export const FLASK_ITEM = -5;
+const TOOL_CLASS: Record<number, string> = { [LAMP_ITEM]: 'lamp', [GOGGLES_ITEM]: 'goggles', [MICROSCOPE_ITEM]: 'microscope', [SHRINK_ITEM]: 'shrink', [FLASK_ITEM]: 'flask' };
+const TOOL_LABEL: Record<number, string> = { [LAMP_ITEM]: 'lamp', [GOGGLES_ITEM]: 'goggles', [MICROSCOPE_ITEM]: 'scope', [SHRINK_ITEM]: 'shrink', [FLASK_ITEM]: 'lab' };
 export const isTool = (id: number) => id < 0;
 
-const DEFAULT_SLOTS: (BlockName | number)[] = [LAMP_ITEM, GOGGLES_ITEM, MICROSCOPE_ITEM, SHRINK_ITEM, 'planks', 'brick', 'glass', 'stone', 'pink'];
+const DEFAULT_SLOTS: (BlockName | number)[] = [LAMP_ITEM, GOGGLES_ITEM, MICROSCOPE_ITEM, SHRINK_ITEM, FLASK_ITEM, 'planks', 'brick', 'glass', 'stone'];
 
 export class Hotbar {
   slots: number[] = DEFAULT_SLOTS.map(s => (typeof s === 'number' ? s : blockId(s)));
-  active = 4;
+  active = 5;
   private el: HTMLElement;
 
   constructor(el: HTMLElement) {

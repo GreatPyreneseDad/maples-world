@@ -2,6 +2,7 @@ import type { GenieBackend } from './GenieAgent';
 import type { GenieEvent, GenieRequest, ToolCall, BlockName, Vec3 } from '../../shared/genie-tools';
 import { BLOCK_NAMES } from '../../shared/genie-tools';
 import { SPECIES } from '../../shared/taxonomy';
+import { ELEMENTS } from '../../shared/chemistry';
 
 /**
  * No-backend fallback so the game is playable before Supabase/Claude are wired.
@@ -24,6 +25,11 @@ export class OfflineGenie implements GenieBackend {
 
     const creature = SPECIES.find(sp => sp.tier === 'macro' && (text.includes(sp.common.toLowerCase()) || text.includes(sp.binomial.toLowerCase()) || text.includes(sp.common.toLowerCase().split(' ').pop()!)));
     if (/undo|oops|wrong|take it back/.test(text)) { yield say('Poof — undone!'); call('undo', { steps: 1 }); }
+    else if (/atom|element|give me (some )?[a-z]+$/.test(text) && ELEMENTS.some(e => new RegExp(`\\b(${e.symbol.toLowerCase()}|${e.name})\\b`).test(text))) {
+      const el = ELEMENTS.filter(e => new RegExp(`\\b(${e.symbol.toLowerCase()}|${e.name})\\b`).test(text)).sort((a, b) => b.name.length - a.name.length)[0];
+      const n = Math.min(12, Number((text.match(/\d+/) ?? ['3'])[0]) || 3);
+      yield say(`${el.symbol} — ${el.name}. ${n} atoms, coming down!`); call('give_element', { symbol: el.symbol, count: n });
+    }
     else if (/what (is|are|lives)|who('s| is) (that|there)|identify/.test(text)) { yield say('Let me look…'); call('identify', { radius: 16 }); }
     else if (creature) { const n = Math.min(8, Number((text.match(/\d+/) ?? ['1'])[0]) || 1); yield say(`${creature.binomial} — ${creature.common}! Here ${n > 1 ? 'they come' : 'it comes'}.`); call('spawn_creature', { species: creature.id, count: n }); }
     else if (/house|home|hut|cabin/.test(text)) {

@@ -39,6 +39,12 @@ const DEFS: Omit<BlockDef, 'id'>[] = [
   def('red', 0xe03a3a), def('orange', 0xf08a2a), def('yellow', 0xf2d53a), def('green', 0x3ac25a),
   def('blue', 0x3a6fe0), def('purple', 0x8f4ae0), def('pink', 0xf07ac0), def('white', 0xf5f5f5), def('black', 0x202020),
   def('lamp', 0xfff1b0, 0xfff1b0, 0xfff1b0, { emissive: 0.9, noise: 0.02 }),
+  // Crafted by chemistry (appended: block ids are persisted, never reorder).
+  def('salt', 0xf4f4f8, 0xf4f4f8, 0xf4f4f8, { noise: 0.06 }),
+  def('iron', 0xb8b8c0, 0xb8b8c0, 0xb8b8c0, { noise: 0.06 }),
+  def('copper', 0xc87a48, 0xc87a48, 0xc87a48, { noise: 0.06 }),
+  def('coal', 0x2a2a2e, 0x2a2a2e, 0x2a2a2e, { noise: 0.16 }),
+  def('chalk', 0xf8f6ee, 0xf8f6ee, 0xf8f6ee, { noise: 0.08 }),
 ];
 
 export const BLOCKS: BlockDef[] = DEFS.map((d, id) => ({ ...d, id }));

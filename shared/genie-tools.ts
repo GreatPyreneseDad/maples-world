@@ -12,6 +12,7 @@ export const BLOCK_NAMES = [
   'planks', 'glass', 'brick', 'cobble', 'snow', 'gold', 'diamond',
   'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'white', 'black',
   'lamp',
+  'salt', 'iron', 'copper', 'coal', 'chalk',
 ] as const;
 export type BlockName = (typeof BLOCK_NAMES)[number];
 
@@ -33,6 +34,7 @@ export interface ToolInputs {
   say: { text: string };
   spawn_creature: { species: string; count?: number; near?: Vec3 };
   identify: { radius?: number };
+  give_element: { symbol: string; count?: number };
 }
 export type ToolName = keyof ToolInputs;
 
@@ -94,6 +96,7 @@ export const GENIE_TOOLS = [
   { name: 'surface_height', description: 'Y of the highest solid block at (x,z). Build ON TOP of this: base y = surface_height + 1.', input_schema: { type: 'object', properties: { x: { type: 'integer' }, z: { type: 'integer' } }, required: ['x', 'z'] } },
   { name: 'undo', description: 'Undo the last N of your edits (default 1). Use when the player says it looks wrong.', input_schema: { type: 'object', properties: { steps: { type: 'integer' } } } },
   { name: 'spawn_creature', description: 'Bring a living thing into the world by its Latin binomial, common name, or id from the SPECIES list (macro tier only — micro life lives under the microscope). It appears near the player or at `near`. Water animals need water nearby. Max count 8.', input_schema: { type: 'object', properties: { species: { type: 'string' }, count: { type: 'integer' }, near: vec3 }, required: ['species'] } },
+  { name: 'give_element', description: 'Drop atoms of a real element (by chemical symbol, e.g. "Au", "Na", "Cl") at the player\'s feet. Max 12 per call. Use when the player asks for an element or is one atom short of a recipe.', input_schema: { type: 'object', properties: { symbol: { type: 'string' }, count: { type: 'integer' } }, required: ['symbol'] } },
   { name: 'identify', description: 'List the living things near the player with their binomials and distances. Use when asked "what is that?", "what lives here?", or to teach a name.', input_schema: { type: 'object', properties: { radius: { type: 'integer' } } } },
 ] as const;
 
@@ -120,5 +123,7 @@ How to build:
 - If the player says undo / that's wrong / too big, call undo.
 
 Life: the world is alive with real species in Whittaker's five kingdoms (Animalia, Plantae, Fungi, Protista, Monera). Use their real Latin binomials when you speak of them — say the name, then the common name: "Vulpes vulpes, the red fox". You can spawn_creature any macro species from the SPECIES list below, and identify what lives nearby. Micro life (protists, bacteria, tardigrades) is seen through the microscope or by shrinking — tell the player to try those. Teach lightly: one true fact at a time, never a lecture.
+
+Chemistry: breaking a block spills the real atoms it is made of, labelled by symbol (stone → Si, O, Al, K…; water → H, H, O and a rare Na or Cl). The player gathers atoms and combines them by real formulas in the Lab (L key) — the RECIPES list below is exactly what can be made. Speak in formulas and names together: "H₂O, water". You can give_element a few atoms when asked or when they are one short. Never invent elements or compounds outside the lists.
 
 You cannot move the player or change game rules. If asked, say what you can do instead.`;

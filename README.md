@@ -13,6 +13,8 @@ Controls: WASD move · Space jump · Space×2 fly · LMB break · RMB place · 1
 
 **Life.** The world is alive with real species across the five kingdoms — *Vulpes vulpes*, *Amanita muscaria*, *Paramecium caudatum*… Aim at anything living to learn its name; hold **goggles** (slot 2) to name everything around you. The **microscope** (slot 3, right-click on water, soil, leaves or wood) opens the small world; **shrink dust** (slot 4) drops you into it at your feet. **J** opens the Field Journal. **Q** brings you back to size. Ask the genie "what lives here?" or "bring me a fox".
 
+**Chemistry.** Break a block and its atoms fall out — Si, O, Fe, Au — labelled with their symbols. Walk over them to collect. **L** (or the **flask**, slot 5) opens the Lab: a periodic table that fills in as you find elements, and recipes with real formulas (H₂O, NaCl, SiO₂, Fe₂O₃…) that turn atoms into blocks. Ask the genie for "three atoms of sodium".
+
 ## Turn on the real genie + cloud saves
 
 1. Create a Supabase project. Run the files in `supabase/migrations/` in order (SQL editor or `supabase db push`).

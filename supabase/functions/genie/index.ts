@@ -9,6 +9,9 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { GENIE_TOOLS, GENIE_SYSTEM_PROMPT, LIMITS, type GenieEvent, type GenieRequest } from './genie-tools.ts';
 import { SPECIES } from './taxonomy.ts';
+import { RECIPES } from './chemistry.ts';
+
+const RECIPE_LIST = RECIPES.map(r => `${r.formula} = ${r.name} ← ${Object.entries(r.needs).map(([s, n]) => `${n} ${s}`).join(' + ')}`).join('\n');
 
 const SPECIES_LIST = SPECIES.map(s => `${s.id} = ${s.binomial} (${s.common}; ${s.kingdom}/${s.phylum}; ${s.tier}; ${s.habitats.join(',')})`).join('\n');
 
@@ -56,6 +59,9 @@ Deno.serve(async (req) => {
 
 SPECIES:
 ${SPECIES_LIST}
+
+RECIPES:
+${RECIPE_LIST}
 
 Current context (JSON): ${JSON.stringify(body.context ?? {})}
 Interpret positions relative to this. If "target" is non-null, the player is pointing at that block — treat it as the anchor for "here"/"there".`;

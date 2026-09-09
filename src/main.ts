@@ -4,7 +4,11 @@ import { ChunkRenderer } from './engine/ChunkRenderer';
 import { BLOCKS, AIR, blockId } from './engine/Blocks';
 import { Input } from './player/Input';
 import { Player } from './player/Player';
-import { Hotbar, LAMP_ITEM, GOGGLES_ITEM, MICROSCOPE_ITEM, SHRINK_ITEM } from './ui/Hotbar';
+import { Hotbar, LAMP_ITEM, GOGGLES_ITEM, MICROSCOPE_ITEM, SHRINK_ITEM, FLASK_ITEM } from './ui/Hotbar';
+import { ElementDrops } from './chem/ElementDrops';
+import { ElementInventory } from './chem/Inventory';
+import { LabPanel } from './ui/LabPanel';
+import { drawAtoms, ELEMENT_BY_SYMBOL, RECIPES, type Recipe } from '../shared/chemistry';
 import { LifeSystem } from './life/LifeSystem';
 import { MicroWorld, type Substrate } from './life/MicroWorld';
 import { FieldGuide } from './ui/FieldGuide';
@@ -38,6 +42,9 @@ class Game {
   life!: LifeSystem;
   micro!: MicroWorld;
   guide!: FieldGuide;
+  drops!: ElementDrops;
+  atoms!: ElementInventory;
+  lab!: LabPanel;
   microHud = document.getElementById('micro-hud')!;
   highlight: THREE.LineSegments;
   hud = document.getElementById('hud')!;
@@ -78,12 +85,13 @@ class Game {
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === this.renderer.domElement;
       if (locked) this.overlay.hidden = true;
-      else if (!this.chat.isOpen && !this.guide?.isJournalOpen) this.overlay.hidden = false;
+      else if (!this.chat.isOpen && !this.guide?.isJournalOpen && !this.lab?.isOpen) this.overlay.hidden = false;
     });
     addEventListener('keydown', e => {
       if (e.code === 'Escape' && this.chat.isOpen) this.closeChat();
       if (e.code === 'KeyJ' && !this.chat.isOpen && this.guide) this.toggleJournal();
       if (e.code === 'KeyQ' && this.micro?.active) this.leaveMicro();
+      if (e.code === 'KeyL' && !this.chat.isOpen && this.lab) this.toggleLab();
     });
   }
 
@@ -123,6 +131,13 @@ class Game {
         }
         return placed ? `spawned ${placed} × ${sp.binomial} (${sp.common})` : `could not place ${sp.binomial} here — it needs ${sp.habitats.join('/')}`;
       },
+      giveElement: (symbol, count) => {
+        const sym = Object.keys(ELEMENT_BY_SYMBOL).find(k => k.toLowerCase() === symbol.trim().toLowerCase()) ?? Object.values(ELEMENT_BY_SYMBOL).find(e => e.name === symbol.trim().toLowerCase())?.symbol;
+        if (!sym) throw new Error(`"${symbol}" is not a chemical element symbol`);
+        const p = this.player.pos, f = this.player.facing();
+        this.drops.burst(Math.floor(p.x + f.x * 2), Math.floor(p.y), Math.floor(p.z + f.z * 2), Array(count).fill(sym));
+        return `dropped ${count} × ${sym} (${ELEMENT_BY_SYMBOL[sym].name})`;
+      },
       identify: radius => {
         const p = this.player.pos;
         const near = this.life.critters.map(c => ({ c, d: c.pos.distanceTo(p) })).filter(o => o.d <= radius).sort((a, b) => a.d - b.d).slice(0, 12);
@@ -135,6 +150,11 @@ class Game {
     this.life = new LifeSystem(this.world, this.scene);
     this.micro = new MicroWorld(this.input);
     this.guide = new FieldGuide(this.meta.id);
+    this.drops = new ElementDrops(this.world, this.scene);
+    this.atoms = new ElementInventory(this.meta.id);
+    this.lab = new LabPanel(this.atoms);
+    this.drops.onCollect = sym => { this.atoms.add(sym); const e = ELEMENT_BY_SYMBOL[sym]; this.toast(`${sym} · ${e?.name ?? sym}${this.atoms.counts[sym] === 1 && e?.fact ? ' — ' + e.fact : ''}`); };
+    this.lab.onCraft = r => this.placeCrafted(r);
     this.guide.onDiscover = sp => this.toast(`✦ New in your journal: ${sp.binomial} — ${sp.common}`);
     this.guide.onChange = ids => { void cloud?.saveDiscoveries(this.meta.id, ids).catch(e => { this.sync.lastError = String(e.message); }); };
     if (cloud) cloud.loadDiscoveries(this.meta.id).then(ids => { this.guide.merge(ids); }).catch(() => {});
@@ -193,10 +213,11 @@ class Game {
 
     this.genie.update(dt, this.player.pos);
     this.life.update(dt, this.player.pos);
+    this.drops.update(dt, this.player.pos);
     this.sync.tick();
 
     // Field guide: what am I looking at, and what's around me?
-    if (!this.chat.isOpen && !this.guide.isJournalOpen) {
+    if (!this.chat.isOpen && !this.guide.isJournalOpen && !this.lab.isOpen) {
       const facing = this.player.facing();
       const aimed = this.life.pick(this.camera.position, facing, 14);
       const goggles = this.hotbar.selected === GOGGLES_ITEM;
@@ -226,20 +247,22 @@ class Game {
       `xyz ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}${this.player.flying ? ' · flying' : ''}\n` +
       `holding: ${held}${t ? ` · looking at ${BLOCKS[t.id].name} @ ${t.block.join(',')}` : ''}\n` +
       `save: ${this.sync.status}${this.sync.lastError ? ' (' + this.sync.lastError + ')' : ''} · undo depth ${this.edit.undoDepth}\n` +
-      `life: ${census || 'none nearby'} · journal ${this.guide.discovered.size}`;
+      `life: ${census || 'none nearby'} · journal ${this.guide.discovered.size} · atoms ${this.atoms.total()} · compounds ${this.atoms.crafted.size}/${RECIPES.length}`;
   }
 
   private handleClicks() {
     for (const btn of this.input.takeClicks()) {
       const t = this.player.target;
       if (btn === 0 && t && !this.hotbar.holdingTool) {
-        this.world.setBlock(t.block[0], t.block[1], t.block[2], AIR);
+        const name = BLOCKS[t.id].name;
+        if (this.world.setBlock(t.block[0], t.block[1], t.block[2], AIR)) this.drops.burst(t.block[0], t.block[1], t.block[2], drawAtoms(name, 2 + (Math.random() < 0.5 ? 1 : 0)));
       } else if (btn === 2) {
         const held = this.hotbar.selected;
         if (held === LAMP_ITEM) { this.summon(); continue; }
         if (held === MICROSCOPE_ITEM) { if (t) this.enterMicro(this.substrateOf(t.id, t.block), 'microscope'); else this.toast('Point the microscope at water, soil, leaves or wood'); continue; }
         if (held === SHRINK_ITEM) { const f = Math.floor(this.player.pos.y) - 1; const under = this.world.getBlock(Math.floor(this.player.pos.x), f, Math.floor(this.player.pos.z)); this.enterMicro(this.substrateOf(under, [Math.floor(this.player.pos.x), f, Math.floor(this.player.pos.z)]), 'shrink'); continue; }
         if (held === GOGGLES_ITEM) continue;
+        if (held === FLASK_ITEM) { this.toggleLab(true); continue; }
         if (!t) continue;
         const [x, y, z] = [t.block[0] + t.normal[0], t.block[1] + t.normal[1], t.block[2] + t.normal[2]];
         if (this.player.intersectsBlock(x, y, z)) continue;
@@ -294,6 +317,25 @@ class Game {
     this.renderer.render(this.micro.scene, this.micro.camera);
     this.frames++; this.fpsT += dt;
     if (this.fpsT >= 0.5) { this.fps = Math.round(this.frames / this.fpsT); this.frames = 0; this.fpsT = 0; this.hud.textContent = `${this.fps} fps · micro: ${this.micro.critters.length} organisms in ${this.micro.description}`; }
+  }
+
+  toggleLab(open?: boolean) {
+    this.lab.toggle(open);
+    this.input.captured = this.lab.isOpen;
+    if (this.lab.isOpen) { this.input.releaseLock(); this.overlay.hidden = true; }
+    else this.input.requestLock();
+  }
+
+  /** A crafted compound appears where the player is aiming (or just in front), and the Lab tells you what it is. */
+  placeCrafted(r: Recipe) {
+    const t = this.player.target;
+    const facing = this.player.facing();
+    let x: number, y: number, z: number;
+    if (t) { [x, y, z] = [t.block[0] + t.normal[0], t.block[1] + t.normal[1], t.block[2] + t.normal[2]]; }
+    else { x = Math.floor(this.player.pos.x + facing.x * 3); z = Math.floor(this.player.pos.z + facing.z * 3); y = this.world.surfaceHeight(x, z) + 1; }
+    if (this.player.intersectsBlock(x, y, z)) { x = Math.floor(this.player.pos.x + facing.x * 2); z = Math.floor(this.player.pos.z + facing.z * 2); y = this.world.surfaceHeight(x, z) + 1; }
+    this.world.setBlock(x, y, z, blockId(r.yields));
+    this.toast(`${r.formula} → ${r.name}`);
   }
 
   toggleJournal(open?: boolean) {

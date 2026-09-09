@@ -35,7 +35,11 @@ src/life/
                              (walk/hop/fly/swim/crawl/burrow; plants grow + spread in light; fungi in shade/wood).
   MicroWorld.ts              The small world: a separate scene per substrate (pond/soil/leaf/moss/bark) with
                              cilia, flagella, pseudopods, run-and-tumble, division, filaments. Microscope or shrink.
-src/ui/                      Hotbar (lamp, goggles, microscope, shrink dust, blocks), ChatPanel, FieldGuide (labels + journal).
+src/chem/
+  ../shared/chemistry.ts     THE PERIODIC TABLE: 118 elements; what every block is made of; real-formula recipes.
+  ElementDrops.ts            Atoms as labelled sprites: pop, bounce, settle, magnet to the player.
+  Inventory.ts               Atoms held + compounds made, persisted per world.
+src/ui/                      Hotbar (lamp, goggles, microscope, shrink dust, flask, blocks), ChatPanel, FieldGuide, LabPanel.
 src/persist/                 codec (deflate/base64), WorldStore (IndexedDB + Supabase), WorldSync (debounced writer).
 supabase/migrations/         Schema + RLS + rate-limit RPC.
 supabase/functions/genie/    Edge Function: auth → ownership → rate limit → Claude (streaming) → NDJSON.
@@ -59,6 +63,10 @@ player types "build a pink castle"
 ## Life
 
 Five kingdoms, real names, honest dynamics. `shared/taxonomy.ts` is the only place species are defined; the browser spawns/renders from it, the genie's `spawn_creature` and `identify` tools validate against it, and the Edge Function pastes it into the system prompt so the model knows exactly what exists. Macro life is seeded per chunk column from the world seed (same world, same fox on the same hill); micro life is seeded from the block you looked at. Sizes are true (meters / micrometers); the micro scene compresses them logarithmically so a 2 µm *E. coli* and a 1.5 mm *Stentor* share one dish. The Field Journal is the pedagogy: aim → binomial appears → hold → discovered → fact. Discoveries persist locally and in `discoveries`.
+
+## Chemistry
+
+Break a block and 2–3 of its real constituent atoms spill out, each wearing its symbol and atomic number (stone → Si, O, Al, K, Na, Ca, Fe, Mg; sea water → H, H, O and the odd Na or Cl; the green pigment block → malachite's Cu, C, O, H). Walk over them to pocket them. The Lab (L, or the flask) is a periodic table that fills in as you find elements, beside sixteen recipes with real formulas — H₂O, NaCl, SiO₂, Fe₂O₃, CaCO₃, C₆H₁₀O₅ — each of which yields a block placed where you aim. Compositions are declared simplifications (granite for "stone"), never fictions. Five blocks exist only through chemistry: salt, iron, copper, coal, chalk.
 
 ## Coordinates
 

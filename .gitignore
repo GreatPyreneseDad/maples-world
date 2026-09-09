@@ -9,3 +9,4 @@ playwright-report
 supabase/functions/genie/genie-tools.ts
 supabase/functions/genie/taxonomy.ts
 Claude outputs/
+supabase/functions/genie/chemistry.ts

@@ -6,6 +6,7 @@ import { LIMITS, type ToolCall, type ToolInputs, type ToolResult, type Vec3, typ
 export interface LifeApi {
   spawn(speciesQuery: string, count: number, near: Vec3 | null): string;
   identify(radius: number): string;
+  giveElement(symbol: string, count: number): string;
 }
 
 /** x, y, z, optional op-specific flag (fill uses 1 = shell). */
@@ -51,6 +52,7 @@ export class WorldEdit {
       case 'undo': return this.undo((i as ToolInputs['undo']).steps ?? 1);
       case 'say': return 'ok';
       case 'spawn_creature': { const inp = i as ToolInputs['spawn_creature']; if (!this.life) throw new Error('no life system'); return this.life.spawn(String(inp.species ?? ''), clampInt(inp.count ?? 1, 1, 8), inp.near ? this.vec(inp.near) : null); }
+      case 'give_element': { const inp = i as ToolInputs['give_element']; if (!this.life) throw new Error('no chemistry'); return this.life.giveElement(String(inp.symbol ?? ''), clampInt(inp.count ?? 1, 1, 12)); }
       case 'identify': { if (!this.life) throw new Error('no life system'); return this.life.identify(clampInt((i as ToolInputs['identify']).radius ?? 16, 2, 48)); }
       default: throw new Error(`unknown tool ${(call as ToolCall).name}`);
     }
