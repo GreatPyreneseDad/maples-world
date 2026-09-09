@@ -179,6 +179,35 @@ export function buildBody(sp: Species): Body {
       b.add(G.cone, A, 0, 0.75, 0, 0.7, 0.6, 0.7); b.add(G.cone, A, 0, 1.05, 0, 0.5, 0.5, 0.5); b.add(G.cone, A, 0, 1.3, 0, 0.3, 0.4, 0.3);
       return 0.8;
     });
+    case 'bush': return rig(b => {
+      for (let i = 0; i < 5; i++) { const a = i * 1.26; b.add(G.sphere, A, Math.cos(a) * 0.25, 0.4 + (i % 2) * 0.15, Math.sin(a) * 0.25, 0.55, 0.5, 0.55); }
+      b.add(G.sphere, A, 0, 0.6, 0, 0.6, 0.55, 0.6);
+      for (let i = 0; i < 9; i++) { const a = i * 0.7, r = 0.3 + (i % 3) * 0.08; const berry = b.add(G.sphere, Bm, Math.cos(a) * r, 0.45 + ((i * 7) % 5) * 0.08, Math.sin(a) * r, 0.1, 0.1, 0.1); b.part('fruit', berry); }
+      b.add(G.cyl, mat(0x6e4c2a), 0, 0.15, 0, 0.08, 0.3, 0.08);
+      return 0.6;
+    });
+    case 'duckweed': return rig(b => {
+      for (let i = 0; i < 7; i++) { const a = i * 0.9, r = 0.2 + (i % 3) * 0.12; b.add(G.disc, i % 2 ? A : Bm, Math.cos(a) * r, 0.02, Math.sin(a) * r, 0.28, 0.4, 0.28); }
+      return 0.5;
+    });
+    case 'sheep': return rig(b => {
+      b.add(G.sphere, A, 0, 0.6, 0, 0.7, 0.6, 1.0);
+      b.add(G.sphere, A, 0, 0.75, 0.15, 0.55, 0.5, 0.6);
+      b.add(G.box, Bm, 0, 0.72, 0.6, 0.24, 0.3, 0.32);
+      b.add(G.box, Bm, 0.14, 0.9, 0.5, 0.06, 0.12, 0.1); b.add(G.box, Bm, -0.14, 0.9, 0.5, 0.06, 0.12, 0.1);
+      for (const [x, z] of [[0.18, 0.3], [-0.18, 0.3], [0.18, -0.3], [-0.18, -0.3]]) leg(b, Bm, x, 0.35, z, 0.35, 0.09);
+      return 0.7;
+    });
+    case 'chicken': return rig(b => {
+      b.add(G.sphere, A, 0, 0.45, 0, 0.5, 0.45, 0.65);
+      b.add(G.sphere, A, 0, 0.72, 0.3, 0.26, 0.26, 0.26);
+      b.add(G.box, Bm, 0, 0.88, 0.3, 0.06, 0.12, 0.16);                      // comb
+      b.add(G.cone, mat(0xf2b200), 0, 0.7, 0.48, 0.08, 0.16, 0.08, Math.PI / 2); // beak
+      b.add(G.box, Bm, 0, 0.62, 0.42, 0.05, 0.1, 0.05);                       // wattle
+      b.add(G.box, A, 0, 0.55, -0.4, 0.1, 0.2, 0.2, 0.5);
+      for (const x of [0.1, -0.1]) leg(b, mat(0xf2b200), x, 0.25, 0, 0.25, 0.04);
+      return 0.55;
+    });
     case 'mushroom': return rig(b => {
       b.add(G.cyl, Bm, 0, 0.3, 0, 0.22, 0.6, 0.22);
       const cap = b.add(G.sphere, A, 0, 0.62, 0, 0.9, 0.5, 0.9); b.part('cap', cap);

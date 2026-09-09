@@ -39,7 +39,9 @@ src/chem/
   ../shared/chemistry.ts     THE PERIODIC TABLE: 118 elements; what every block is made of; real-formula recipes.
   ElementDrops.ts            Atoms as labelled sprites: pop, bounce, settle, magnet to the player.
   Inventory.ts               Atoms held + compounds made, persisted per world.
-src/ui/                      Hotbar (lamp, goggles, microscope, shrink dust, flask, blocks), ChatPanel, FieldGuide, LabPanel.
+src/guild/Guild.ts           Quest generation, markers, completion by world observation, rank + friends (persisted).
+src/ui/                      Hotbar (lamp, goggles, microscope, shrink, flask, seeds, blocks), ChatPanel, FieldGuide, LabPanel,
+                             GuildPanel (G) + quest tracker, SeedPouch (K).
 src/persist/                 codec (deflate/base64), WorldStore (IndexedDB + Supabase), WorldSync (debounced writer).
 supabase/migrations/         Schema + RLS + rate-limit RPC.
 supabase/functions/genie/    Edge Function: auth → ownership → rate limit → Claude (streaming) → NDJSON.
@@ -63,6 +65,10 @@ player types "build a pink castle"
 ## Life
 
 Five kingdoms, real names, honest dynamics. `shared/taxonomy.ts` is the only place species are defined; the browser spawns/renders from it, the genie's `spawn_creature` and `identify` tools validate against it, and the Edge Function pastes it into the system prompt so the model knows exactly what exists. Macro life is seeded per chunk column from the world seed (same world, same fox on the same hill); micro life is seeded from the block you looked at. Sizes are true (meters / micrometers); the micro scene compresses them logarithmically so a 2 µm *E. coli* and a 1.5 mm *Stentor* share one dish. The Field Journal is the pedagogy: aim → binomial appears → hold → discovered → fact. Discoveries persist locally and in `discoveries`.
+
+## The Animal Protector Guild
+
+The storyline is not scripted against coordinates; it is generated from the living world. `shared/guild.ts` holds the quest vocabulary (feed, shelter, free, habitat), rank ladder, and `habitatNeed()` — what "a home" means per species, expressed as countable blocks or plants. `src/guild/Guild.ts` offers quests near the player (preferring animals already there), spawns what it must (a caged fox, a sheep in the weather), and completes them by observing the world: `LifeSystem` fires `ate` when an animal grazes a mature favourite plant and `sheltered` when a domestic animal stands under a roof with three walls; a rockfall is a recorded set of cobble cells and the animal is free when a side opens at its level; a pond is nine water blocks within the marker's radius. Diets are real and live on the species (`diet`), so the same table drives the seed pouch's "eaten by" hints, the Guild's briefs, the genie's prompt, and the animals' foraging.
 
 ## Chemistry
 

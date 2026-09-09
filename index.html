@@ -115,6 +115,34 @@
     #pocket .atom { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--c); color: #111; position: relative; font-weight: 700; }
     #pocket .atom i { position: absolute; bottom: -4px; right: -4px; background: #1a1428; color: #ffe9a8; border-radius: 8px; padding: 0 4px; font-size: 10px; font-style: normal; }
     #pocket .hint, #pocket .more { opacity: 0.6; align-self: center; margin-left: 4px; }
+
+    #guild, #seeds { position: fixed; inset: 6vh 10vw; background: rgba(20,16,32,0.95); border-radius: 18px; border: 1px solid rgba(143,240,176,0.35); z-index: 6; display: flex; flex-direction: column; box-shadow: 0 20px 80px rgba(0,0,0,0.6); }
+    #guild[hidden], #seeds[hidden] { display: none; }
+    #guild header, #seeds header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-wrap: wrap; }
+    #guild header h2, #seeds header h2 { margin: 0; font-size: 20px; }
+    #guild header .rank { opacity: 0.85; font-size: 13px; }
+    #guild header button, #seeds header button { background: rgba(255,255,255,0.1); color: var(--ink); border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+    #guild header button.primary { margin-left: auto; background: linear-gradient(135deg, #8ff0b0, #3ac25a); color: #06200c; font-weight: 700; }
+    #guild-body, #seeds-list { overflow-y: auto; padding: 12px 20px 24px; }
+    #guild section h3 { margin: 12px 0 6px; font-size: 14px; color: #8ff0b0; border-bottom: 1px solid rgba(143,240,176,0.25); padding-bottom: 4px; }
+    #guild section h3 span { float: right; opacity: 0.6; font-weight: normal; font-size: 12px; }
+    .quest { padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); margin-bottom: 8px; border-left: 4px solid #8ff0b0; }
+    .quest.shelter { border-color: #ffd86b; } .quest.free { border-color: #ff9a9a; } .quest.habitat { border-color: #7fe7ff; }
+    .quest .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.6; }
+    .quest h4 { margin: 2px 0 4px; font-size: 15px; } .quest p { margin: 0 0 6px; font-size: 13px; opacity: 0.9; }
+    .quest .prog { font-size: 12px; color: #ffe9a8; } .quest small { display: block; margin-top: 4px; opacity: 0.6; font-size: 11px; }
+    .quest.done { opacity: 0.6; }
+    .friend { font-size: 13px; padding: 4px 0; } .friend i { color: #ffe9a8; }
+    .muted { opacity: 0.55; font-size: 13px; }
+    #seeds-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+    .seed { text-align: left; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: var(--ink); border-radius: 10px; padding: 10px 12px; cursor: pointer; display: grid; gap: 2px; }
+    .seed:hover { border-color: #8ff0b0; } .seed.on { border-color: #8ff0b0; background: rgba(143,240,176,0.12); }
+    .seed i { color: #ffe9a8; } .seed small { opacity: 0.6; font-size: 11px; }
+    #questhud { position: fixed; top: 66px; left: 50%; transform: translateX(-50%); background: var(--ui); padding: 6px 12px; border-radius: 10px; font-size: 12px; display: flex; gap: 14px; align-items: center; border: 1px solid rgba(143,240,176,0.35); z-index: 3; max-width: 70vw; }
+    #questhud[hidden] { display: none; }
+    #questhud .q { display: grid; line-height: 1.25; } #questhud .q span { color: #ffe9a8; font-size: 11px; } #questhud .q small { opacity: 0.6; font-size: 10px; }
+    #questhud .hint { opacity: 0.5; }
+    .slot.seeds .swatch { background: radial-gradient(circle at 35% 35%, #c8ffb0, #3ac25a 60%, #1a6a2a); border-radius: 40% 60% 50% 50%; }
     .slot.flask .swatch { background: linear-gradient(180deg, #d0f8ff 0 40%, #7fe7ff 40%); clip-path: polygon(40% 0, 60% 0, 60% 35%, 95% 100%, 5% 100%, 40% 35%); }
   </style>
 </head>
@@ -127,11 +155,21 @@
     <div><kbd>LMB</kbd> break · <kbd>RMB</kbd> place · <kbd>1–9</kbd>/<kbd>wheel</kbd> pick</div>
     <div><kbd>RMB</kbd> with the <b>lamp</b> summons the genie · <kbd>Esc</kbd> closes</div>
     <div>Aim at a creature to name it · <b>goggles</b> name everything · <b>microscope</b> <kbd>RMB</kbd> on water/soil/leaves · <b>shrink dust</b> <kbd>RMB</kbd> · <kbd>J</kbd> journal · <kbd>Q</kbd> back to size</div>
+    <div><b>Guild</b> <kbd>G</kbd> gives quests to help animals · <b>seeds</b> <kbd>RMB</kbd> plants food near them · <kbd>K</kbd> picks a seed</div>
     <div>Break blocks → atoms fall out with their symbols · walk over them · <kbd>L</kbd> or the <b>flask</b> opens the Lab to combine them</div>
   </div>
   <div id="labels"></div>
   <div id="micro-hud" hidden></div>
   <div id="pocket" hidden></div>
+  <div id="questhud" hidden></div>
+  <div id="guild" hidden>
+    <header><h2>Animal Protector Guild</h2><span class="rank" id="guild-rank"></span><button class="primary" id="guild-ask">Ask for a quest</button><button id="guild-close">close (G)</button></header>
+    <div id="guild-body"></div>
+  </div>
+  <div id="seeds" hidden>
+    <header><h2>Seed pouch</h2><span class="rank">Pick a seed, then right-click the ground (or water) to plant it.</span><button id="seeds-close" style="margin-left:auto">close</button></header>
+    <div id="seeds-list"></div>
+  </div>
   <div id="lab" hidden>
     <header><h2>Lab</h2><span class="count" id="lab-count"></span><button id="lab-close">close (L)</button></header>
     <div class="body"><div id="lab-atoms"></div><div id="lab-recipes"></div></div>

@@ -28,7 +28,14 @@ export class Critter {
   growth = 1;
   age = 0;
   alive = true;
-  spawnedBy: 'world' | 'genie' | 'spread' = 'world';
+  spawnedBy: 'world' | 'genie' | 'spread' | 'player' = 'world';
+  /** Guild state. */
+  friendly = false;
+  stuck = false;
+  hunger = 0.5;
+  lastAte = -1;
+  eatTarget: Critter | null = null;
+  seekTimer = 0;
 
   constructor(readonly sp: Species) {
     this.body = buildBody(sp);
@@ -56,8 +63,43 @@ export class LifeSystem {
   maxPerColumn = 5;
   private t = 0;
   onSpawn?: (c: Critter) => void;
+  /** Guild hooks: an animal ate its favourite plant / walked into shelter. */
+  onEvent?: (kind: 'ate' | 'sheltered', c: Critter, other?: Critter) => void;
 
   constructor(private world: World, scene: THREE.Scene) { scene.add(this.group); }
+
+  /** The player plants a seed: a seedling that must grow before anyone can eat it. */
+  plant(sp: Species, x: number, z: number): Critter | null {
+    const c = this.place(sp, x, z, Math.random);
+    if (!c) return null;
+    c.growth = 0.05; c.spawnedBy = 'player';
+    const key = `${Math.floor(x) >> 4},${Math.floor(z) >> 4}`;
+    (this.columns.get(key) ?? (() => { const nc: Column = { key, cx: Math.floor(x) >> 4, cz: Math.floor(z) >> 4, critters: [] }; this.columns.set(key, nc); return nc; })()).critters.push(c);
+    return c;
+  }
+
+  /** A cell counts as sheltered when something solid is overhead and at least three of four sides are walled within two blocks. */
+  isSheltered(x: number, y: number, z: number): boolean {
+    let roof = false;
+    for (let dy = 1; dy <= 4; dy++) if (isSolid(this.world.getBlock(x, y + dy, z))) { roof = true; break; }
+    if (!roof) return false;
+    let walls = 0;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (let d = 1; d <= 2; d++) if (isSolid(this.world.getBlock(x + dx * d, y, z + dz * d)) || isSolid(this.world.getBlock(x + dx * d, y + 1, z + dz * d))) { walls++; break; }
+    }
+    return walls >= 3;
+  }
+
+  /** Nearest mature plant of any species in `ids` within radius. */
+  nearestFood(c: Critter, ids: string[], radius = 8): Critter | null {
+    let best: Critter | null = null, bd = radius * radius;
+    for (const o of this.critters) {
+      if (!ids.includes(o.sp.id) || o.growth < 0.8) continue;
+      const d = o.pos.distanceToSquared(c.pos);
+      if (d < bd) { bd = d; best = o; }
+    }
+    return best;
+  }
 
   // ---- population ----------------------------------------------------------
 
@@ -123,6 +165,9 @@ export class LifeSystem {
       c.pos.set(x + 0.5, sp.id === 'mallard' ? SEA_LEVEL + 0.9 : h + 1 + r() * Math.max(0.5, SEA_LEVEL - h - 1), z + 0.5);
     } else if (sp.locomotion === 'fly') {
       c.pos.set(x + 0.5, h + 3 + r() * 6, z + 0.5);
+    } else if (sp.kingdom === 'Plantae' && sp.habitats.includes('water')) {
+      if (!inWater) return null;
+      c.pos.set(x + 0.5, SEA_LEVEL + 1.02, z + 0.5);          // floats on the surface
     } else {
       if (inWater || surfaceId === B.water) return null;
       c.pos.set(x + 0.5, h + 1, z + 0.5);
@@ -180,6 +225,18 @@ export class LifeSystem {
     c.age += dt; c.timer -= dt;
     const sp = c.sp;
     const distP = c.pos.distanceTo(player);
+    if (c.stuck) { this.animate(c, dt); this.applyTransform(c); return; }   // trapped: can't move until freed
+    if (sp.kingdom === 'Animalia') {
+      c.hunger = Math.min(1, c.hunger + dt / 120);
+      if (this.eatStep(c, dt)) { this.animate(c, dt); this.applyTransform(c); return; }
+      if (c.sp.domestic && this.shelterStep(c, dt)) { this.animate(c, dt); this.applyTransform(c); return; }
+      if (c.friendly && (sp.locomotion === 'walk' || sp.locomotion === 'hop') && distP > 4 && distP < 12 && c.timer <= 0) {
+        // Friends keep you company: drift toward the player, never crowd.
+        c.target.copy(player).sub(c.pos).setY(0).normalize().multiplyScalar(distP - 2.5).add(c.pos);
+        c.target.y = this.world.surfaceHeight(Math.floor(c.target.x), Math.floor(c.target.z)) + 1;
+        c.timer = 2;
+      }
+    }
     switch (sp.locomotion) {
       case 'walk': this.walk(c, dt, player, distP, sp.id === 'sand-lizard' ? 2.2 : 1.6, sp.id === 'red-fox' ? 0 : 5); break;
       case 'crawl': this.walk(c, dt, player, distP, 0.35, 0); break;
@@ -209,7 +266,7 @@ export class LifeSystem {
   }
 
   private walk(c: Critter, dt: number, player: THREE.Vector3, distP: number, speed: number, fleeDist: number) {
-    if (fleeDist && distP < fleeDist) {
+    if (fleeDist && distP < fleeDist && !c.friendly) {
       const away = c.pos.clone().sub(player).setY(0).normalize().multiplyScalar(6);
       c.target.copy(c.pos).add(away); c.target.y = this.world.surfaceHeight(Math.floor(c.target.x), Math.floor(c.target.z)) + 1;
       c.timer = 1.2; speed *= 1.8;
@@ -225,7 +282,7 @@ export class LifeSystem {
     const onGround = c.pos.y <= ground + 0.02;
     if (onGround) {
       c.pos.y = ground; c.vel.set(0, 0, 0);
-      const scared = distP < 4;
+      const scared = distP < 4 && !c.friendly;
       if (c.timer <= 0 || scared) {
         if (scared) { const away = c.pos.clone().sub(player).setY(0).normalize(); c.target.copy(c.pos).addScaledVector(away, 4); }
         else if (Math.random() < 0.6) this.pickGroundTarget(c, 4, c.sp.id === 'common-frog');
@@ -322,6 +379,55 @@ export class LifeSystem {
     if (!hab || !c.sp.habitats.includes(hab)) return;
     const child = this.place(c.sp, x, z, Math.random);
     if (child) { child.growth = 0.05; child.spawnedBy = 'spread'; this.columns.get(`${x >> 4},${z >> 4}`)?.critters.push(child); }
+  }
+
+  /** Seek and eat a mature favourite plant. Returns true while it is handling movement. */
+  private eatStep(c: Critter, dt: number): boolean {
+    const diet = c.sp.diet;
+    if (!diet?.length) return false;
+    if (c.eatTarget && (!c.eatTarget.alive || c.eatTarget.growth < 0.5)) c.eatTarget = null;
+    c.seekTimer -= dt;
+    if (!c.eatTarget && c.hunger > 0.3 && c.seekTimer <= 0) {
+      c.seekTimer = 3 + Math.random() * 4;
+      c.eatTarget = this.nearestFood(c, diet, c.sp.locomotion === 'fly' ? 14 : 9);
+    }
+    if (!c.eatTarget) return false;
+    const food = c.eatTarget;
+    const d = c.pos.distanceTo(food.pos);
+    if (d > (c.sp.locomotion === 'fly' ? 0.9 : 1.1)) {
+      c.target.copy(food.pos); if (c.sp.locomotion !== 'fly' && c.sp.locomotion !== 'swim') c.target.y = this.world.surfaceHeight(Math.floor(food.pos.x), Math.floor(food.pos.z)) + 1;
+      this.moveToward(c, dt, c.sp.locomotion === 'fly' ? 2.5 : c.sp.locomotion === 'crawl' ? 0.35 : 1.4, c.sp.locomotion !== 'fly' && c.sp.locomotion !== 'swim');
+      return true;
+    }
+    // Eating: the plant is grazed back to a seedling, the animal is fed and befriended.
+    c.timer = 1.5;
+    food.growth = 0.2;
+    c.hunger = 0; c.lastAte = this.t;
+    const first = !c.friendly; c.friendly = true;
+    c.eatTarget = null;
+    this.onEvent?.('ate', c, food);
+    void first;
+    return true;
+  }
+
+  /** Domestic animals look for a roofed, walled spot and go stand in it. */
+  private shelterStep(c: Critter, dt: number): boolean {
+    const here = this.isSheltered(Math.floor(c.pos.x), Math.floor(c.pos.y), Math.floor(c.pos.z));
+    if (here) { if (!c.body.group.userData.sheltered) { c.body.group.userData.sheltered = true; this.onEvent?.('sheltered', c); } return false; }
+    c.body.group.userData.sheltered = false;
+    if (c.timer > 0 && c.target.distanceTo(c.pos) > 0.3 && c.body.group.userData.shelterTarget) { this.moveToward(c, dt, 1.2, true); return true; }
+    if (c.seekTimer > 0) return false;
+    c.seekTimer = 4;
+    // Search a small neighbourhood for a sheltered cell.
+    const cx = Math.floor(c.pos.x), cz = Math.floor(c.pos.z);
+    for (let r = 1; r <= 8; r++) for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+      if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+      const x = cx + dx, z = cz + dz, y = this.world.surfaceHeight(x, z) + 1;
+      if (Math.abs(y - c.pos.y) > 3) continue;
+      if (this.isSheltered(x, y, z)) { c.target.set(x + 0.5, y, z + 0.5); c.timer = 6; c.body.group.userData.shelterTarget = true; return true; }
+    }
+    c.body.group.userData.shelterTarget = false;
+    return false;
   }
 
   private moveToward(c: Critter, dt: number, speed: number, stickToGround: boolean, keepY = false) {

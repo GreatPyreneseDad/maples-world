@@ -4,7 +4,10 @@ import { ChunkRenderer } from './engine/ChunkRenderer';
 import { BLOCKS, AIR, blockId } from './engine/Blocks';
 import { Input } from './player/Input';
 import { Player } from './player/Player';
-import { Hotbar, LAMP_ITEM, GOGGLES_ITEM, MICROSCOPE_ITEM, SHRINK_ITEM, FLASK_ITEM } from './ui/Hotbar';
+import { Hotbar, LAMP_ITEM, GOGGLES_ITEM, MICROSCOPE_ITEM, SHRINK_ITEM, FLASK_ITEM, SEEDS_ITEM } from './ui/Hotbar';
+import { Guild } from './guild/Guild';
+import { GuildPanel } from './ui/GuildPanel';
+import { SeedPouch } from './ui/SeedPouch';
 import { ElementDrops } from './chem/ElementDrops';
 import { ElementInventory } from './chem/Inventory';
 import { LabPanel } from './ui/LabPanel';
@@ -12,7 +15,7 @@ import { drawAtoms, ELEMENT_BY_SYMBOL, RECIPES, type Recipe } from '../shared/ch
 import { LifeSystem } from './life/LifeSystem';
 import { MicroWorld, type Substrate } from './life/MicroWorld';
 import { FieldGuide } from './ui/FieldGuide';
-import { findSpecies, SPECIES } from '../shared/taxonomy';
+import { findSpecies, SPECIES, SPECIES_BY_ID } from '../shared/taxonomy';
 import { ChatPanel } from './ui/ChatPanel';
 import { WorldEdit } from './genie/WorldEdit';
 import { GenieEntity } from './genie/GenieEntity';
@@ -45,6 +48,9 @@ class Game {
   drops!: ElementDrops;
   atoms!: ElementInventory;
   lab!: LabPanel;
+  guild!: Guild;
+  guildPanel!: GuildPanel;
+  seeds!: SeedPouch;
   microHud = document.getElementById('micro-hud')!;
   highlight: THREE.LineSegments;
   hud = document.getElementById('hud')!;
@@ -85,13 +91,15 @@ class Game {
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === this.renderer.domElement;
       if (locked) this.overlay.hidden = true;
-      else if (!this.chat.isOpen && !this.guide?.isJournalOpen && !this.lab?.isOpen) this.overlay.hidden = false;
+      else if (!this.chat.isOpen && !this.guide?.isJournalOpen && !this.lab?.isOpen && !this.guildPanel?.isOpen && !this.seeds?.isOpen) this.overlay.hidden = false;
     });
     addEventListener('keydown', e => {
       if (e.code === 'Escape' && this.chat.isOpen) this.closeChat();
       if (e.code === 'KeyJ' && !this.chat.isOpen && this.guide) this.toggleJournal();
       if (e.code === 'KeyQ' && this.micro?.active) this.leaveMicro();
       if (e.code === 'KeyL' && !this.chat.isOpen && this.lab) this.toggleLab();
+      if (e.code === 'KeyG' && !this.chat.isOpen && this.guildPanel) this.togglePanel(this.guildPanel);
+      if (e.code === 'KeyK' && !this.chat.isOpen && this.seeds) this.togglePanel(this.seeds);
     });
   }
 
@@ -155,6 +163,16 @@ class Game {
     this.lab = new LabPanel(this.atoms);
     this.drops.onCollect = sym => { this.atoms.add(sym); const e = ELEMENT_BY_SYMBOL[sym]; this.toast(`${sym} · ${e?.name ?? sym}${this.atoms.counts[sym] === 1 && e?.fact ? ' — ' + e.fact : ''}`); };
     this.lab.onCraft = r => this.placeCrafted(r);
+    this.guild = new Guild(this.world, this.life, this.meta.id, this.scene, () => this.player.pos, () => this.player.facing());
+    this.guildPanel = new GuildPanel(this.guild, () => this.player.pos);
+    this.seeds = new SeedPouch();
+    this.guildPanel.onAsk = () => { const q = this.guild.offer(); if (!q) this.toast('You already have three quests — finish one first.'); };
+    this.guild.onQuest = q => { this.toast(`✦ Guild quest: ${q.title}`); this.guildPanel.renderHud(); };
+    this.guild.onProgress = () => this.guildPanel.renderHud();
+    this.guild.onComplete = q => { this.toast(`✓ ${q.title} — +${q.points} · ${SPECIES_BY_ID[q.speciesId].binomial} trusts you now`); this.guildPanel.renderHud(); if (this.guildPanel.isOpen) this.guildPanel.render(); };
+    this.guild.onRank = name => this.toast(`★ New rank: ${name}`);
+    this.seeds.onPick = sp => this.toast(`Seed: ${sp.binomial} — ${sp.common}`);
+    this.life.onEvent = ((orig) => (kind: 'ate' | 'sheltered', c: any, other?: any) => { orig?.(kind, c, other); if (kind === 'ate' && other) this.toast(`${c.sp.common} ate ${other.sp.common} — ${c.sp.binomial} likes you`); })(this.life.onEvent);
     this.guide.onDiscover = sp => this.toast(`✦ New in your journal: ${sp.binomial} — ${sp.common}`);
     this.guide.onChange = ids => { void cloud?.saveDiscoveries(this.meta.id, ids).catch(e => { this.sync.lastError = String(e.message); }); };
     if (cloud) cloud.loadDiscoveries(this.meta.id).then(ids => { this.guide.merge(ids); }).catch(() => {});
@@ -177,6 +195,8 @@ class Game {
     this.chat.onSubmit = t => this.wish(t);
     this.chat.onClose = () => { this.input.captured = false; this.input.requestLock(); };
 
+    // First steps: the Guild reaches out once the player has looked around.
+    setTimeout(() => { if (this.guild.active.length === 0 && this.guild.completed.length === 0 && !this.micro.active) { this.guild.offer('feed'); this.toast('✦ The Animal Protector Guild has a job for you — press G'); } }, 12_000);
     this.renderer.setAnimationLoop(() => this.frame());
     (window as unknown as { game: Game }).game = this; // debugging & smoke tests
   }
@@ -214,10 +234,12 @@ class Game {
     this.genie.update(dt, this.player.pos);
     this.life.update(dt, this.player.pos);
     this.drops.update(dt, this.player.pos);
+    this.guild.update(dt);
+    if ((this.tickCount & 31) === 0) this.guildPanel.renderHud();
     this.sync.tick();
 
     // Field guide: what am I looking at, and what's around me?
-    if (!this.chat.isOpen && !this.guide.isJournalOpen && !this.lab.isOpen) {
+    if (!this.chat.isOpen && !this.guide.isJournalOpen && !this.lab.isOpen && !this.guildPanel.isOpen && !this.seeds.isOpen) {
       const facing = this.player.facing();
       const aimed = this.life.pick(this.camera.position, facing, 14);
       const goggles = this.hotbar.selected === GOGGLES_ITEM;
@@ -247,7 +269,8 @@ class Game {
       `xyz ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}${this.player.flying ? ' · flying' : ''}\n` +
       `holding: ${held}${t ? ` · looking at ${BLOCKS[t.id].name} @ ${t.block.join(',')}` : ''}\n` +
       `save: ${this.sync.status}${this.sync.lastError ? ' (' + this.sync.lastError + ')' : ''} · undo depth ${this.edit.undoDepth}\n` +
-      `life: ${census || 'none nearby'} · journal ${this.guide.discovered.size} · atoms ${this.atoms.total()} · compounds ${this.atoms.crafted.size}/${RECIPES.length}`;
+      `life: ${census || 'none nearby'} · journal ${this.guide.discovered.size} · atoms ${this.atoms.total()} · compounds ${this.atoms.crafted.size}/${RECIPES.length}\n` +
+      `guild: ${this.guild.rank.name} · ${this.guild.points} pts · ${this.guild.active.length} active · friends ${this.guild.befriended.size}`;
   }
 
   private handleClicks() {
@@ -263,6 +286,7 @@ class Game {
         if (held === SHRINK_ITEM) { const f = Math.floor(this.player.pos.y) - 1; const under = this.world.getBlock(Math.floor(this.player.pos.x), f, Math.floor(this.player.pos.z)); this.enterMicro(this.substrateOf(under, [Math.floor(this.player.pos.x), f, Math.floor(this.player.pos.z)]), 'shrink'); continue; }
         if (held === GOGGLES_ITEM) continue;
         if (held === FLASK_ITEM) { this.toggleLab(true); continue; }
+        if (held === SEEDS_ITEM) { this.plantSeed(); continue; }
         if (!t) continue;
         const [x, y, z] = [t.block[0] + t.normal[0], t.block[1] + t.normal[1], t.block[2] + t.normal[2]];
         if (this.player.intersectsBlock(x, y, z)) continue;
@@ -336,6 +360,29 @@ class Game {
     if (this.player.intersectsBlock(x, y, z)) { x = Math.floor(this.player.pos.x + facing.x * 2); z = Math.floor(this.player.pos.z + facing.z * 2); y = this.world.surfaceHeight(x, z) + 1; }
     this.world.setBlock(x, y, z, blockId(r.yields));
     this.toast(`${r.formula} → ${r.name}`);
+  }
+
+  /** Generic modal toggle: releases the pointer while a panel is open. */
+  togglePanel(panel: { toggle(open?: boolean): void; isOpen: boolean }, open?: boolean) {
+    panel.toggle(open);
+    this.input.captured = panel.isOpen;
+    if (panel.isOpen) { this.input.releaseLock(); this.overlay.hidden = true; }
+    else this.input.requestLock();
+  }
+
+  /** Right-click with the seed pouch: plant the chosen seed on the block you're looking at. */
+  plantSeed() {
+    const sp = this.seeds.selected;
+    if (!sp) { this.togglePanel(this.seeds, true); return; }
+    const t = this.player.target;
+    if (!t) { this.toast('Look at the ground to plant'); return; }
+    const top = BLOCKS[t.id].name;
+    const wantsWater = sp.habitats.includes('water');
+    if (wantsWater && top !== 'water') { this.toast(`${sp.common} floats — plant it on water`); return; }
+    if (!wantsWater && !['grass', 'dirt', 'sand', 'snow'].includes(top)) { this.toast(`${sp.common} needs soil, not ${top}`); return; }
+    const c = this.life.plant(sp, t.block[0], t.block[2]);
+    if (c) this.toast(`Planted ${sp.binomial} — it will take a minute or two to grow`);
+    else this.toast('Nothing took root here');
   }
 
   toggleJournal(open?: boolean) {

@@ -13,6 +13,8 @@ Controls: WASD move · Space jump · Space×2 fly · LMB break · RMB place · 1
 
 **Life.** The world is alive with real species across the five kingdoms — *Vulpes vulpes*, *Amanita muscaria*, *Paramecium caudatum*… Aim at anything living to learn its name; hold **goggles** (slot 2) to name everything around you. The **microscope** (slot 3, right-click on water, soil, leaves or wood) opens the small world; **shrink dust** (slot 4) drops you into it at your feet. **J** opens the Field Journal. **Q** brings you back to size. Ask the genie "what lives here?" or "bring me a fox".
 
+**Animal Protector Guild.** Press **G**. The Guild gives quests drawn from the world around you: feed a hungry rabbit (plant *Trifolium repens* from the **seed pouch**, slot 6, and wait for it to grow), shelter a sheep (roof + three walls; it walks in by itself), free a fox from a rockfall (open a side), dig a pond so frogs move in. Helped animals become friends and follow you. Every animal has a real favourite food — cultivate it nearby and they will come.
+
 **Chemistry.** Break a block and its atoms fall out — Si, O, Fe, Au — labelled with their symbols. Walk over them to collect. **L** (or the **flask**, slot 5) opens the Lab: a periodic table that fills in as you find elements, and recipes with real formulas (H₂O, NaCl, SiO₂, Fe₂O₃…) that turn atoms into blocks. Ask the genie for "three atoms of sodium".
 
 ## Turn on the real genie + cloud saves
