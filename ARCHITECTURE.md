@@ -28,7 +28,14 @@ src/genie/
   GenieAgent.ts              Client agentic loop. Streams NDJSON; executes tools as they arrive.
   OfflineGenie.ts            Rule-based fallback backend.
   GenieEntity.ts             The unicorn (primitives, rainbow horn, sparkles, thinking pulse).
-src/ui/                      Hotbar (lamp in slot 1), ChatPanel.
+src/life/
+  ../shared/taxonomy.ts      THE LIVING REGISTRY: ~40 real species, real binomials, Whittaker's five kingdoms.
+  Bodies.ts                  Procedural rigs per body plan (quadruped, ciliate, volvox, rod…) with animatable parts.
+  LifeSystem.ts              Macro life: deterministic per-column spawning by habitat, kingdom dynamics
+                             (walk/hop/fly/swim/crawl/burrow; plants grow + spread in light; fungi in shade/wood).
+  MicroWorld.ts              The small world: a separate scene per substrate (pond/soil/leaf/moss/bark) with
+                             cilia, flagella, pseudopods, run-and-tumble, division, filaments. Microscope or shrink.
+src/ui/                      Hotbar (lamp, goggles, microscope, shrink dust, blocks), ChatPanel, FieldGuide (labels + journal).
 src/persist/                 codec (deflate/base64), WorldStore (IndexedDB + Supabase), WorldSync (debounced writer).
 supabase/migrations/         Schema + RLS + rate-limit RPC.
 supabase/functions/genie/    Edge Function: auth → ownership → rate limit → Claude (streaming) → NDJSON.
@@ -49,6 +56,10 @@ player types "build a pink castle"
   → WorldSync notices dirty chunks → 1.5 s debounce → IndexedDB + world_chunks upsert
 ```
 
+## Life
+
+Five kingdoms, real names, honest dynamics. `shared/taxonomy.ts` is the only place species are defined; the browser spawns/renders from it, the genie's `spawn_creature` and `identify` tools validate against it, and the Edge Function pastes it into the system prompt so the model knows exactly what exists. Macro life is seeded per chunk column from the world seed (same world, same fox on the same hill); micro life is seeded from the block you looked at. Sizes are true (meters / micrometers); the micro scene compresses them logarithmically so a 2 µm *E. coli* and a 1.5 mm *Stentor* share one dish. The Field Journal is the pedagogy: aim → binomial appears → hold → discovered → fact. Discoveries persist locally and in `discoveries`.
+
 ## Coordinates
 
 x/z horizontal, y up, world height 128 (8 chunks). Chunk `(cx,cy,cz)` covers `[cx*16, cx*16+16)`. Block at `(x,y,z)` lives in chunk `(x>>4, y>>4, z>>4)` at local `(x&15, y&15, z&15)`. Sea level 38.
@@ -63,4 +74,4 @@ x/z horizontal, y up, world height 128 (8 chunks). Chunk `(cx,cy,cz)` covers `[c
 
 ## Not yet (deliberate)
 
-Multiplayer, mobs, crafting, survival, lighting/AO, sound, mobile controls, genie long-term memory (table exists, unused by prompt), world sharing (read-only links). Each is additive to the above without restructuring.
+Multiplayer, crafting, survival, predator/prey ecosystem, taming, lighting/AO, sound, mobile controls, genie long-term memory (table exists, unused by prompt), world sharing (read-only links). Each is additive to the above without restructuring.

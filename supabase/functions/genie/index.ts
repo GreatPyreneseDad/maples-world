@@ -8,6 +8,9 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { GENIE_TOOLS, GENIE_SYSTEM_PROMPT, LIMITS, type GenieEvent, type GenieRequest } from './genie-tools.ts';
+import { SPECIES } from './taxonomy.ts';
+
+const SPECIES_LIST = SPECIES.map(s => `${s.id} = ${s.binomial} (${s.common}; ${s.kingdom}/${s.phylum}; ${s.tier}; ${s.habitats.join(',')})`).join('\n');
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
 const MODEL = Deno.env.get('GENIE_MODEL') ?? 'claude-sonnet-4-5';
@@ -50,6 +53,9 @@ Deno.serve(async (req) => {
   if (messages.length === 0 || (messages[messages.length - 1] as { role: string }).role !== 'user') return json({ error: 'last message must be from user' }, 400);
 
   const system = `${GENIE_SYSTEM_PROMPT}
+
+SPECIES:
+${SPECIES_LIST}
 
 Current context (JSON): ${JSON.stringify(body.context ?? {})}
 Interpret positions relative to this. If "target" is non-null, the player is pointing at that block — treat it as the anchor for "here"/"there".`;

@@ -31,6 +31,8 @@ export interface ToolInputs {
   surface_height: { x: number; z: number };
   undo: { steps?: number };
   say: { text: string };
+  spawn_creature: { species: string; count?: number; near?: Vec3 };
+  identify: { radius?: number };
 }
 export type ToolName = keyof ToolInputs;
 
@@ -91,6 +93,8 @@ export const GENIE_TOOLS = [
   { name: 'scan', description: 'Summarize a box: block counts and bounding info. Max 32x32x32. Use before building on unknown ground.', input_schema: { type: 'object', properties: { from: vec3, to: vec3 }, required: ['from', 'to'] } },
   { name: 'surface_height', description: 'Y of the highest solid block at (x,z). Build ON TOP of this: base y = surface_height + 1.', input_schema: { type: 'object', properties: { x: { type: 'integer' }, z: { type: 'integer' } }, required: ['x', 'z'] } },
   { name: 'undo', description: 'Undo the last N of your edits (default 1). Use when the player says it looks wrong.', input_schema: { type: 'object', properties: { steps: { type: 'integer' } } } },
+  { name: 'spawn_creature', description: 'Bring a living thing into the world by its Latin binomial, common name, or id from the SPECIES list (macro tier only — micro life lives under the microscope). It appears near the player or at `near`. Water animals need water nearby. Max count 8.', input_schema: { type: 'object', properties: { species: { type: 'string' }, count: { type: 'integer' }, near: vec3 }, required: ['species'] } },
+  { name: 'identify', description: 'List the living things near the player with their binomials and distances. Use when asked "what is that?", "what lives here?", or to teach a name.', input_schema: { type: 'object', properties: { radius: { type: 'integer' } } } },
 ] as const;
 
 export const LIMITS = {
@@ -115,4 +119,6 @@ How to build:
 - After building, say what you made in one short sentence and offer one tiny follow-up idea.
 - If the player says undo / that's wrong / too big, call undo.
 
-You cannot move the player, spawn creatures, or change game rules. If asked, say what you can do instead.`;
+Life: the world is alive with real species in Whittaker's five kingdoms (Animalia, Plantae, Fungi, Protista, Monera). Use their real Latin binomials when you speak of them — say the name, then the common name: "Vulpes vulpes, the red fox". You can spawn_creature any macro species from the SPECIES list below, and identify what lives nearby. Micro life (protists, bacteria, tardigrades) is seen through the microscope or by shrinking — tell the player to try those. Teach lightly: one true fact at a time, never a lecture.
+
+You cannot move the player or change game rules. If asked, say what you can do instead.`;

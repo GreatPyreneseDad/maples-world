@@ -4,7 +4,11 @@ import { ChunkRenderer } from './engine/ChunkRenderer';
 import { BLOCKS, AIR, blockId } from './engine/Blocks';
 import { Input } from './player/Input';
 import { Player } from './player/Player';
-import { Hotbar, LAMP_ITEM } from './ui/Hotbar';
+import { Hotbar, LAMP_ITEM, GOGGLES_ITEM, MICROSCOPE_ITEM, SHRINK_ITEM } from './ui/Hotbar';
+import { LifeSystem } from './life/LifeSystem';
+import { MicroWorld, type Substrate } from './life/MicroWorld';
+import { FieldGuide } from './ui/FieldGuide';
+import { findSpecies, SPECIES } from '../shared/taxonomy';
 import { ChatPanel } from './ui/ChatPanel';
 import { WorldEdit } from './genie/WorldEdit';
 import { GenieEntity } from './genie/GenieEntity';
@@ -31,6 +35,10 @@ class Game {
   agent!: GenieAgent;
   sync!: WorldSync;
   meta!: WorldMeta;
+  life!: LifeSystem;
+  micro!: MicroWorld;
+  guide!: FieldGuide;
+  microHud = document.getElementById('micro-hud')!;
   highlight: THREE.LineSegments;
   hud = document.getElementById('hud')!;
   overlay = document.getElementById('overlay')!;
@@ -64,14 +72,19 @@ class Game {
     addEventListener('resize', () => {
       this.camera.aspect = innerWidth / innerHeight; this.camera.updateProjectionMatrix();
       this.renderer.setSize(innerWidth, innerHeight);
+      if (this.micro) { this.micro.camera.aspect = innerWidth / innerHeight; this.micro.camera.updateProjectionMatrix(); }
     });
     this.overlay.addEventListener('click', () => this.input.requestLock());
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === this.renderer.domElement;
       if (locked) this.overlay.hidden = true;
-      else if (!this.chat.isOpen) this.overlay.hidden = false;
+      else if (!this.chat.isOpen && !this.guide?.isJournalOpen) this.overlay.hidden = false;
     });
-    addEventListener('keydown', e => { if (e.code === 'Escape' && this.chat.isOpen) this.closeChat(); });
+    addEventListener('keydown', e => {
+      if (e.code === 'Escape' && this.chat.isOpen) this.closeChat();
+      if (e.code === 'KeyJ' && !this.chat.isOpen && this.guide) this.toggleJournal();
+      if (e.code === 'KeyQ' && this.micro?.active) this.leaveMicro();
+    });
   }
 
   async boot() {
@@ -92,8 +105,39 @@ class Game {
     this.chunks = new ChunkRenderer(this.world, this.scene);
     this.player = new Player(this.camera, this.world, this.input);
     this.edit = new WorldEdit(this.world, (x, y, z) => !this.player.intersectsBlock(x, y, z));
+    this.edit.life = {
+      spawn: (q, count, near) => {
+        const sp = findSpecies(q);
+        if (!sp) throw new Error(`unknown species "${q}". Known: ${SPECIES.filter(s => s.tier === 'macro').map(s => s.binomial).join(', ')}`);
+        if (sp.tier === 'micro') return `${sp.binomial} is ${sp.size} µm — too small to place in the open air. Suggest the microscope or shrink dust.`;
+        const facing = this.player.facing();
+        const cx = near?.x ?? Math.floor(this.player.pos.x + facing.x * 5), cz = near?.z ?? Math.floor(this.player.pos.z + facing.z * 5);
+        let placed = 0;
+        for (let i = 0; i < count; i++) {
+          for (let tries = 0; tries < 12 && placed <= i; tries++) {   // water animals need water; land animals need land
+            const r = 1 + tries * 0.8;
+            const x = cx + Math.floor((Math.random() - 0.5) * 2 * r), z = cz + Math.floor((Math.random() - 0.5) * 2 * r);
+            const c = this.life.spawn(sp, x, z);
+            if (c) { placed++; this.guide.discover(sp); }
+          }
+        }
+        return placed ? `spawned ${placed} × ${sp.binomial} (${sp.common})` : `could not place ${sp.binomial} here — it needs ${sp.habitats.join('/')}`;
+      },
+      identify: radius => {
+        const p = this.player.pos;
+        const near = this.life.critters.map(c => ({ c, d: c.pos.distanceTo(p) })).filter(o => o.d <= radius).sort((a, b) => a.d - b.d).slice(0, 12);
+        for (const o of near) this.guide.discover(o.c.sp);
+        return near.length ? near.map(o => `${o.c.sp.binomial} (${o.c.sp.common}, ${o.c.sp.kingdom}) ${o.d.toFixed(0)}m`).join('; ') : 'nothing living within range';
+      },
+    };
     this.edit.onEdit = (label, n) => this.toast(`✦ ${label}: ${n} blocks`);
     this.genie = new GenieEntity(this.scene);
+    this.life = new LifeSystem(this.world, this.scene);
+    this.micro = new MicroWorld(this.input);
+    this.guide = new FieldGuide(this.meta.id);
+    this.guide.onDiscover = sp => this.toast(`✦ New in your journal: ${sp.binomial} — ${sp.common}`);
+    this.guide.onChange = ids => { void cloud?.saveDiscoveries(this.meta.id, ids).catch(e => { this.sync.lastError = String(e.message); }); };
+    if (cloud) cloud.loadDiscoveries(this.meta.id).then(ids => { this.guide.merge(ids); }).catch(() => {});
 
     const backend: GenieBackend = SUPABASE_URL && SUPABASE_KEY && userId
       ? new SupabaseGenieBackend(SUPABASE_URL, accessToken, SUPABASE_KEY)
@@ -138,6 +182,7 @@ class Game {
   frame() {
     this.timer.update();
     const dt = this.timer.getDelta();
+    if (this.micro.active) { this.microFrame(dt); return; }
     this.player.update(dt);
     this.handleClicks();
     this.hotbar.scroll(this.input.takeWheel());
@@ -147,10 +192,20 @@ class Game {
     if ((++this.tickCount & 127) === 0) this.world.unloadFar(pcx, pcz, UNLOAD_RADIUS);
 
     this.genie.update(dt, this.player.pos);
+    this.life.update(dt, this.player.pos);
     this.sync.tick();
 
+    // Field guide: what am I looking at, and what's around me?
+    if (!this.chat.isOpen && !this.guide.isJournalOpen) {
+      const facing = this.player.facing();
+      const aimed = this.life.pick(this.camera.position, facing, 14);
+      const goggles = this.hotbar.selected === GOGGLES_ITEM;
+      const nearby = goggles ? this.life.critters.filter(c => c.pos.distanceToSquared(this.player.pos) < 100).sort((a, b) => a.pos.distanceToSquared(this.player.pos) - b.pos.distanceToSquared(this.player.pos)) : [];
+      this.guide.updateLabels(this.camera, aimed, nearby, goggles, dt);
+    } else this.guide.hideLabels();
+
     const t = this.player.target;
-    this.highlight.visible = !!t && !this.hotbar.holdingLamp;
+    this.highlight.visible = !!t && !this.hotbar.holdingTool;
     if (t) this.highlight.position.set(t.block[0] + 0.5, t.block[1] + 0.5, t.block[2] + 0.5);
 
     this.sun.position.set(this.camera.position.x + 60, this.camera.position.y + 100, this.camera.position.z + 30);
@@ -164,21 +219,27 @@ class Game {
   private hudText() {
     const p = this.player.pos;
     const t = this.player.target;
-    const held = this.hotbar.holdingLamp ? 'genie lamp' : BLOCKS[this.hotbar.selected].name;
+    const held = this.hotbar.holdingTool ? this.hotbar.toolName : BLOCKS[this.hotbar.selected].name;
+    const census = Object.entries(this.life.census()).map(([k, v]) => `${k} ${v}`).join(' · ');
     this.hud.textContent =
       `${this.fps} fps · ${this.chunks.meshCount} meshes · ${this.world.chunks.size} chunks\n` +
       `xyz ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}${this.player.flying ? ' · flying' : ''}\n` +
       `holding: ${held}${t ? ` · looking at ${BLOCKS[t.id].name} @ ${t.block.join(',')}` : ''}\n` +
-      `save: ${this.sync.status}${this.sync.lastError ? ' (' + this.sync.lastError + ')' : ''} · undo depth ${this.edit.undoDepth}`;
+      `save: ${this.sync.status}${this.sync.lastError ? ' (' + this.sync.lastError + ')' : ''} · undo depth ${this.edit.undoDepth}\n` +
+      `life: ${census || 'none nearby'} · journal ${this.guide.discovered.size}`;
   }
 
   private handleClicks() {
     for (const btn of this.input.takeClicks()) {
       const t = this.player.target;
-      if (btn === 0 && t && !this.hotbar.holdingLamp) {
+      if (btn === 0 && t && !this.hotbar.holdingTool) {
         this.world.setBlock(t.block[0], t.block[1], t.block[2], AIR);
       } else if (btn === 2) {
-        if (this.hotbar.holdingLamp) { this.summon(); continue; }
+        const held = this.hotbar.selected;
+        if (held === LAMP_ITEM) { this.summon(); continue; }
+        if (held === MICROSCOPE_ITEM) { if (t) this.enterMicro(this.substrateOf(t.id, t.block), 'microscope'); else this.toast('Point the microscope at water, soil, leaves or wood'); continue; }
+        if (held === SHRINK_ITEM) { const f = Math.floor(this.player.pos.y) - 1; const under = this.world.getBlock(Math.floor(this.player.pos.x), f, Math.floor(this.player.pos.z)); this.enterMicro(this.substrateOf(under, [Math.floor(this.player.pos.x), f, Math.floor(this.player.pos.z)]), 'shrink'); continue; }
+        if (held === GOGGLES_ITEM) continue;
         if (!t) continue;
         const [x, y, z] = [t.block[0] + t.normal[0], t.block[1] + t.normal[1], t.block[2] + t.normal[2]];
         if (this.player.intersectsBlock(x, y, z)) continue;
@@ -186,6 +247,60 @@ class Game {
         this.world.setBlock(x, y, z, this.hotbar.selected);
       }
     }
+  }
+
+  // ---- the small world -----------------------------------------------------
+
+  private substrateOf(blockIdAt: number, at: [number, number, number]): Substrate {
+    const name = BLOCKS[blockIdAt]?.name;
+    // Moss nearby? Then it's a moss cushion.
+    const moss = this.life.critters.some(c => c.sp.id === 'haircap-moss' && c.pos.distanceToSquared(new THREE.Vector3(at[0] + 0.5, at[1] + 1, at[2] + 0.5)) < 4);
+    if (moss) return 'moss';
+    if (name === 'water' || name === 'sand') return 'pond';
+    if (name === 'leaves') return 'leaf';
+    if (name === 'wood' || name === 'planks') return 'bark';
+    return 'soil';
+  }
+
+  enterMicro(substrate: Substrate, mode: 'microscope' | 'shrink') {
+    const seed = (this.meta.seed ^ Math.floor(this.player.pos.x) * 73856093 ^ Math.floor(this.player.pos.z) * 19349663) >>> 0;
+    this.micro.enter(substrate, seed, mode);
+    this.guide.hideLabels();
+    this.highlight.visible = false;
+    this.scene.visible = false;
+    this.microHud.hidden = false;
+    this.microHud.innerHTML = mode === 'microscope'
+      ? `🔬 Microscope — ${this.micro.description} · <b>wheel</b> zoom · <b>WASD</b> pan · <b>Q</b> put it down`
+      : `✨ You shrank into ${this.micro.description} · <b>WASD</b> swim · <b>Space/C</b> up/down · <b>Q</b> grow back`;
+    this.toast(mode === 'microscope' ? 'Looking closer…' : 'Shrinking…');
+  }
+
+  leaveMicro() {
+    this.micro.leave();
+    this.scene.visible = true;
+    this.microHud.hidden = true;
+    this.guide.hideLabels();
+  }
+
+  private microFrame(dt: number) {
+    this.micro.update(dt);
+    this.input.takeClicks();
+    if (!this.guide.isJournalOpen) {
+      const aimed = this.micro.pick();
+      const nearby = this.micro.critters.filter(c => c.pos.distanceToSquared(this.micro.camera.position) < 260 * 260);
+      // In the small world the microscope IS the goggles: everything in view is named.
+      this.guide.updateLabels(this.micro.camera, aimed, nearby, true, dt);
+    }
+    this.renderer.render(this.micro.scene, this.micro.camera);
+    this.frames++; this.fpsT += dt;
+    if (this.fpsT >= 0.5) { this.fps = Math.round(this.frames / this.fpsT); this.frames = 0; this.fpsT = 0; this.hud.textContent = `${this.fps} fps · micro: ${this.micro.critters.length} organisms in ${this.micro.description}`; }
+  }
+
+  toggleJournal(open?: boolean) {
+    this.guide.toggleJournal(open);
+    this.input.captured = this.guide.isJournalOpen;
+    if (this.guide.isJournalOpen) { this.input.releaseLock(); this.overlay.hidden = true; }
+    else this.input.requestLock();
   }
 
   // ---- genie ---------------------------------------------------------------

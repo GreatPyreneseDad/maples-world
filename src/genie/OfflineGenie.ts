@@ -1,6 +1,7 @@
 import type { GenieBackend } from './GenieAgent';
 import type { GenieEvent, GenieRequest, ToolCall, BlockName, Vec3 } from '../../shared/genie-tools';
 import { BLOCK_NAMES } from '../../shared/genie-tools';
+import { SPECIES } from '../../shared/taxonomy';
 
 /**
  * No-backend fallback so the game is playable before Supabase/Claude are wired.
@@ -21,7 +22,10 @@ export class OfflineGenie implements GenieBackend {
     const groundY = c.target ? c.target.y : c.surfaceY;
     const y0 = groundY + 1;
 
+    const creature = SPECIES.find(sp => sp.tier === 'macro' && (text.includes(sp.common.toLowerCase()) || text.includes(sp.binomial.toLowerCase()) || text.includes(sp.common.toLowerCase().split(' ').pop()!)));
     if (/undo|oops|wrong|take it back/.test(text)) { yield say('Poof — undone!'); call('undo', { steps: 1 }); }
+    else if (/what (is|are|lives)|who('s| is) (that|there)|identify/.test(text)) { yield say('Let me look…'); call('identify', { radius: 16 }); }
+    else if (creature) { const n = Math.min(8, Number((text.match(/\d+/) ?? ['1'])[0]) || 1); yield say(`${creature.binomial} — ${creature.common}! Here ${n > 1 ? 'they come' : 'it comes'}.`); call('spawn_creature', { species: creature.id, count: n }); }
     else if (/house|home|hut|cabin/.test(text)) {
       yield say('One cozy house, coming up!');
       const w = color ?? 'planks';
@@ -61,7 +65,7 @@ export class OfflineGenie implements GenieBackend {
       yield say('Clearing the way!');
       call('clear', { from: { x: base.x - 6, y: y0, z: base.z - 6 }, to: { x: base.x + 6, y: y0 + 12, z: base.z + 6 } });
     } else {
-      yield say("I'm the offline genie — I only know house, tree, tower, rainbow, ball, wall, clear, and undo. Connect me to Claude and I'll build anything!");
+      yield say("I'm the offline genie — I only know house, tree, tower, rainbow, ball, wall, clear, undo, and creatures by name (try “a fox” or “three rabbits”). Connect me to Claude and I'll build anything!");
     }
 
     for (const tc of calls) yield { type: 'tool_call', call: tc };

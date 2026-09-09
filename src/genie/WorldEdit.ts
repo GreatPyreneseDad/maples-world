@@ -2,6 +2,12 @@ import type { World } from '../engine/World';
 import { BLOCKS, blockId, AIR } from '../engine/Blocks';
 import { LIMITS, type ToolCall, type ToolInputs, type ToolResult, type Vec3, type BlockName, BLOCK_NAMES } from '../../shared/genie-tools';
 
+/** What the genie may do to living things. Implemented by the game; kept behind an interface so WorldEdit stays testable. */
+export interface LifeApi {
+  spawn(speciesQuery: string, count: number, near: Vec3 | null): string;
+  identify(radius: number): string;
+}
+
 /** x, y, z, optional op-specific flag (fill uses 1 = shell). */
 type Cell = [number, number, number, number?];
 interface Change { x: number; y: number; z: number; prev: number }
@@ -18,7 +24,7 @@ export class WorldEdit {
   /** Fires after any op so UI can flash / play sound. */
   onEdit?: (label: string, count: number) => void;
 
-  constructor(private world: World, private canPlaceAt?: (x: number, y: number, z: number) => boolean) {}
+  constructor(private world: World, private canPlaceAt?: (x: number, y: number, z: number) => boolean, public life?: LifeApi) {}
 
   execute(call: ToolCall): ToolResult {
     try {
@@ -44,6 +50,8 @@ export class WorldEdit {
       case 'surface_height': return this.surfaceHeight(i);
       case 'undo': return this.undo((i as ToolInputs['undo']).steps ?? 1);
       case 'say': return 'ok';
+      case 'spawn_creature': { const inp = i as ToolInputs['spawn_creature']; if (!this.life) throw new Error('no life system'); return this.life.spawn(String(inp.species ?? ''), clampInt(inp.count ?? 1, 1, 8), inp.near ? this.vec(inp.near) : null); }
+      case 'identify': { if (!this.life) throw new Error('no life system'); return this.life.identify(clampInt((i as ToolInputs['identify']).radius ?? 16, 2, 48)); }
       default: throw new Error(`unknown tool ${(call as ToolCall).name}`);
     }
   }

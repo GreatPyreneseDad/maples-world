@@ -13,6 +13,8 @@ export interface WorldStore {
   createWorld(name: string, seed: number, id?: string): Promise<WorldMeta>;
   loadChunks(worldId: string): Promise<ChunkRecord[]>;
   saveChunks(worldId: string, recs: ChunkRecord[]): Promise<void>;
+  loadDiscoveries(worldId: string): Promise<string[]>;
+  saveDiscoveries(worldId: string, ids: string[]): Promise<void>;
 }
 
 // ---- IndexedDB -------------------------------------------------------------
@@ -54,6 +56,9 @@ export class LocalStore implements WorldStore {
   async saveChunks(worldId: string, recs: ChunkRecord[]) {
     await this.tx('chunks', 'readwrite', s => { for (const r of recs) s.put({ ...r, worldId, key: `${worldId}:${r.cx},${r.cy},${r.cz}` }); });
   }
+  // The field journal keeps its own localStorage copy; the local store just mirrors the interface.
+  async loadDiscoveries(worldId: string) { try { return JSON.parse(localStorage.getItem(`maples:journal:${worldId}`) ?? '[]') as string[]; } catch { return []; } }
+  async saveDiscoveries(worldId: string, ids: string[]) { try { localStorage.setItem(`maples:journal:${worldId}`, JSON.stringify(ids)); } catch { /* quota */ } }
 }
 
 // ---- Supabase --------------------------------------------------------------
@@ -85,6 +90,16 @@ export class CloudStore implements WorldStore {
     if (error) throw error;
     await this.sb.from('worlds').update({ updated_at: new Date().toISOString() }).eq('id', worldId);
   }
+  async loadDiscoveries(worldId: string) {
+    const { data, error } = await this.sb.from('discoveries').select('species_id').eq('world_id', worldId);
+    if (error) throw error;
+    return (data as { species_id: string }[]).map(r => r.species_id);
+  }
+  async saveDiscoveries(worldId: string, ids: string[]) {
+    if (!ids.length) return;
+    const { error } = await this.sb.from('discoveries').upsert(ids.map(species_id => ({ world_id: worldId, species_id })), { onConflict: 'world_id,species_id', ignoreDuplicates: true });
+    if (error) throw error;
+  }
 }
 
 // ---- Sync engine -----------------------------------------------------------
@@ -105,6 +120,7 @@ export class WorldSync {
   }
 
   setCloud(c: CloudStore | null) { this.cloud = c; }
+  get cloudStore() { return this.cloud; }
 
   async load() {
     let recs: ChunkRecord[] = [];
