@@ -8,3 +8,4 @@ playwright-report
 .DS_Store
 supabase/functions/genie/genie-tools.ts
 supabase/functions/genie/taxonomy.ts
+Claude outputs/
