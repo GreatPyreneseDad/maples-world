@@ -11,14 +11,20 @@ const B = {
 
 /** Seeded terrain generator. Pure function of (seed, x, z) so any client regenerates the same world. */
 export class Terrain {
+  readonly seed: number;
+  readonly useVolumetric: boolean;
   private height: Noise;
   private detail: Noise;
   private trees: Noise;
+  private cave: Noise;
 
-  constructor(readonly seed: number) {
+  constructor(seed: number, useVolumetric = false) {
+    this.seed = seed;
+    this.useVolumetric = useVolumetric;
     this.height = new Noise(seed);
     this.detail = new Noise(seed ^ 0x9e3779b9);
     this.trees = new Noise(seed ^ 0x85ebca6b);
+    this.cave = new Noise(seed ^ 0x12345678);
   }
 
   surfaceHeight(x: number, z: number): number {
@@ -30,6 +36,14 @@ export class Terrain {
 
   /** Fill an entire vertical column of chunks (same cx, cz) in one pass. */
   generateColumn(chunks: Chunk[], cx: number, cz: number) {
+    if (this.useVolumetric) {
+      this.generateColumnVolumetric(chunks, cx, cz);
+    } else {
+      this.generateColumnClassic(chunks, cx, cz);
+    }
+  }
+
+  private generateColumnClassic(chunks: Chunk[], cx: number, cz: number) {
     const heights = new Int32Array(CHUNK_SIZE * CHUNK_SIZE);
     const wx0 = cx * CHUNK_SIZE, wz0 = cz * CHUNK_SIZE;
     for (let lz = 0; lz < CHUNK_SIZE; lz++)
@@ -49,6 +63,52 @@ export class Terrain {
             else if (y < h) id = beach ? B.sand : B.dirt;
             else if (y === h) id = beach ? B.sand : h > 64 ? B.snow : B.grass;
             else if (y <= SEA_LEVEL) id = B.water;
+            if (id !== 0) c.set(lx, ly, lz, id);
+          }
+        }
+      }
+    }
+    this.plantTrees(chunks, cx, cz, heights);
+    for (const c of chunks) { c.modified = false; c.dirty = true; }
+  }
+
+  private generateColumnVolumetric(chunks: Chunk[], cx: number, cz: number) {
+    const heights = new Int32Array(CHUNK_SIZE * CHUNK_SIZE);
+    const wx0 = cx * CHUNK_SIZE, wz0 = cz * CHUNK_SIZE;
+    for (let lz = 0; lz < CHUNK_SIZE; lz++)
+      for (let lx = 0; lx < CHUNK_SIZE; lx++)
+        heights[lz * CHUNK_SIZE + lx] = this.surfaceHeight(wx0 + lx, wz0 + lz);
+
+    for (const c of chunks) {
+      const wy0 = c.cy * CHUNK_SIZE;
+      for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+        for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+          const wx = wx0 + lx, wz = wz0 + lz;
+          const surfH = heights[lz * CHUNK_SIZE + lx];
+          const beach = surfH <= SEA_LEVEL + 1;
+          for (let ly = 0; ly < CHUNK_SIZE; ly++) {
+            const y = wy0 + ly;
+            // 3D density: higher below surface, lower above; caves carved by turbulent noise.
+            const baselineDensity = (surfH - y) / 20.0;
+            const caveNoise = this.cave.fbm3(wx / 32, y / 32, wz / 32, 3, 2.2, 0.55);
+            const density = baselineDensity + caveNoise * 0.6;
+            const solid = density > 0.1;
+
+            let id = 0;
+            if (solid) {
+              if (y < surfH - 5) id = B.stone;
+              else if (y < surfH - 1) id = beach ? B.sand : B.dirt;
+              else if (y <= surfH) {
+                // Surface layer: grass/snow/sand
+                id = beach ? B.sand : surfH > 64 ? B.snow : B.grass;
+              } else {
+                // Above nominal surface but still solid (overhangs): stone
+                id = B.stone;
+              }
+            } else {
+              // Air or water fill
+              if (y <= SEA_LEVEL) id = B.water;
+            }
             if (id !== 0) c.set(lx, ly, lz, id);
           }
         }
