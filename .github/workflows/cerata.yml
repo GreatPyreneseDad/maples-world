@@ -1,0 +1,49 @@
+# CERATA: copy to .github/workflows/cerata.yml in your repo.
+# Then comment on any issue:   /cerata hunt owner/repo   ·   /cerata consume owner/repo
+# Hunt is free. Consume runs on any model key, or on GitHub Copilot (see below).
+name: CERATA
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'e.g. "hunt psf/requests" or "consume psf/requests src/requests/adapters.py"'
+        required: true
+
+permissions:
+  contents: write        # push the consume branch
+  pull-requests: write   # open the PR
+  issues: write          # reply with hunt reports
+
+concurrency:
+  group: cerata-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  cerata:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.comment.body, '/cerata')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false   # model-written tests must never see a token
+      - uses: GreatPyreneseDad/CERATA-Project@v1
+        with:
+          command: ${{ github.event.inputs.command }}
+          # /cerata hunt needs nothing below. Pick ONE way to power /cerata consume:
+
+          # A) Any model key. Provider is auto-detected from the key, or set it explicitly.
+          api-key: ${{ secrets.CERATA_API_KEY }}
+          # provider: anthropic | openai | openrouter | gemini | deepseek | mistral | groq | together | xai
+          # model: ""            # empty = provider default
+          # base-url: ""         # any OpenAI-compatible endpoint (self-hosted, proxy, Azure v1 ...)
+
+          # B) No model key: hand consume to GitHub Copilot (paid Copilot plan + a PAT).
+          # provider: copilot
+          # copilot-token: ${{ secrets.CERATA_COPILOT_PAT }}
+          # Optional: copy templates/agents/cerata.agent.md to .github/agents/ so Copilot runs as CERATA.
+
+          # github-token: ${{ secrets.CERATA_PAT }}   # PAT/App token if CI should run on CERATA PRs
