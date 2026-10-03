@@ -52,3 +52,39 @@ test('conversation and notes survive a reload; the lamp greets a returning playe
   expect(r.log.some((t: string) => t.includes('a tree'))).toBe(true);
   expect(r.log[r.log.length - 1]).toContain('Back again');
 });
+
+test('a history poisoned by an unanswered tool_use is repaired on load and the genie keeps working', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForFunction(() => (window as any).game?.agent !== undefined, null, { timeout: 60_000 });
+  const n = await page.evaluate(() => {
+    const g = (window as any).game;
+    // What a max_tokens cut-off used to leave behind: tool_use blocks with no tool_result after them.
+    const poisoned = [
+      { role: 'user', content: 'build balloons everywhere' },
+      { role: 'assistant', content: [{ type: 'text', text: 'Balloons coming up!' }, { type: 'tool_use', id: 'toolu_a', name: 'sphere', input: {} }, { type: 'tool_use', id: 'toolu_b', name: 'sphere', input: {} }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_a', content: 'ok' }] }, // b never answered
+      { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_c', name: 'line', input: {} }] },
+    ];
+    localStorage.setItem('maples:genie-history:' + g.meta.id, JSON.stringify(poisoned));
+    return poisoned.length;
+  });
+  expect(n).toBe(4);
+  await page.reload(); await boot(page);
+  const r = await page.evaluate(`(async () => {
+    const g = window.game;
+    g.summon();
+    ${wish('a tree')}
+    const hist = JSON.parse(localStorage.getItem('maples:genie-history:' + g.meta.id));
+    const ids = (m, t, k) => Array.isArray(m.content) ? m.content.filter(b => b.type === t).map(b => b[k]) : [];
+    let paired = true;
+    for (let i = 0; i < hist.length; i++) {
+      const uses = ids(hist[i], 'tool_use', 'id');
+      const results = i + 1 < hist.length ? ids(hist[i + 1], 'tool_result', 'tool_use_id') : [];
+      for (const u of uses) if (!results.includes(u)) paired = false;
+    }
+    return { len: hist.length, first: hist[0].role, last: hist[hist.length - 1].role, paired, builds: g.edit.builds.length };
+  })()`);
+  expect(r.paired).toBe(true);
+  expect(r.first).toBe('user'); expect(r.last).toBe('assistant');
+  expect(r.builds).toBeGreaterThanOrEqual(1);
+});

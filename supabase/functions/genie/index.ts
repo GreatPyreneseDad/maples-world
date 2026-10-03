@@ -1,4 +1,4 @@
-// Maple's World — Genie Edge Function (v6: builds memory, notes, Guild, remember tool; flexible key secret).
+// Maple's World — Genie Edge Function (v7: every tool_use is emitted so it can be answered; 4096 max_tokens).
 // Holds the Anthropic key, verifies the caller owns the world, rate-limits, and streams one
 // model step back as NDJSON GenieEvents. The client executes tools and calls again with results.
 //
@@ -7,7 +7,7 @@
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { GENIE_TOOLS, GENIE_SYSTEM_PROMPT, LIMITS, type GenieEvent, type GenieRequest } from './genie-tools.ts';
+import { GENIE_TOOLS, GENIE_SYSTEM_PROMPT, type GenieEvent, type GenieRequest } from './genie-tools.ts';
 import { SPECIES } from './taxonomy.ts';
 import { RECIPES } from './chemistry.ts';
 
@@ -81,7 +81,7 @@ ${notes.length ? notes.map(n => `- ${n}`).join('\n') : '(none yet)'}`;
   const upstream = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: MODEL, max_tokens: 2048, stream: true, system, tools: GENIE_TOOLS, messages }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 4096, stream: true, system, tools: GENIE_TOOLS, messages }),
   });
   if (!upstream.ok || !upstream.body) {
     const t = await upstream.text().catch(() => '');
@@ -95,7 +95,6 @@ ${notes.length ? notes.map(n => `- ${n}`).join('\n') : '(none yet)'}`;
       const emit = (e: GenieEvent) => controller.enqueue(enc.encode(JSON.stringify(e) + '\n'));
       const blocks: Record<number, { type: string; id?: string; name?: string; text?: string; json?: string }> = {};
       let stopReason: string = 'end_turn';
-      let toolCalls = 0;
       const reader = upstream.body!.getReader();
       const dec = new TextDecoder();
       let buf = '';
@@ -130,7 +129,9 @@ ${notes.length ? notes.map(n => `- ${n}`).join('\n') : '(none yet)'}`;
                   let input: unknown = {};
                   try { input = b.json ? JSON.parse(b.json) : {}; } catch { input = {}; }
                   (b as { input?: unknown }).input = input;
-                  if (++toolCalls <= LIMITS.toolCallsPerTurn) emit({ type: 'tool_call', call: { id: b.id!, name: b.name as never, input: input as never } });
+                  // Always emit — the client answers any call past its per-turn cap with an error result,
+                  // so every tool_use in the assistant message gets its tool_result.
+                  emit({ type: 'tool_call', call: { id: b.id!, name: b.name as never, input: input as never } });
                 }
                 break;
               }

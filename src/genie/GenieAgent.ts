@@ -28,9 +28,56 @@ export class GenieAgent {
   constructor(private backend: GenieBackend, private edit: WorldEdit, private worldId: string) {
     this.key = `maples:genie-history:${worldId}`;
     try { this.history = JSON.parse(localStorage.getItem(this.key) ?? '[]'); } catch { this.history = []; }
-    // A history must start with a user turn and end with an assistant turn to be resumable.
-    while (this.history.length && (this.history[0] as { role: string }).role !== 'user') this.history.shift();
-    while (this.history.length && (this.history[this.history.length - 1] as { role: string }).role !== 'assistant') this.history.pop();
+    const before = this.history.length;
+    this.repair();
+    if (this.history.length !== before) this.persist();
+  }
+
+  /**
+   * Make the history something the API will accept again, whatever happened last time
+   * (tab closed mid-build, max_tokens, a dropped stream): every tool_use must be answered by
+   * a tool_result in the very next user message, and vice versa. Unanswered tool_use blocks
+   * are stripped; orphan tool_result blocks are stripped; then the ends are trimmed so the
+   * history starts with a user turn and ends with an assistant turn.
+   */
+  private repair() {
+    type Msg = { role: 'user' | 'assistant'; content: unknown };
+    type Block = { type: string; id?: string; tool_use_id?: string; text?: string };
+    const msgs = (this.history as Msg[]).filter(m => m && (m.role === 'user' || m.role === 'assistant'));
+    while (msgs.length && msgs[0].role !== 'user') msgs.shift();
+    while (msgs.length && msgs[msgs.length - 1].role !== 'assistant') msgs.pop();
+    const out: Msg[] = [];
+    for (let i = 0; i < msgs.length; i++) {
+      const m = msgs[i];
+      if (!Array.isArray(m.content)) { out.push(m); continue; }
+      let blocks = m.content as Block[];
+      if (m.role === 'assistant') {
+        const next = msgs[i + 1];
+        const answered = new Set(Array.isArray(next?.content) ? (next!.content as Block[]).filter(b => b.type === 'tool_result').map(b => b.tool_use_id) : []);
+        blocks = blocks.filter(b => b.type !== 'tool_use' || answered.has(b.id));
+      } else {
+        const prev = out[out.length - 1];
+        const asked = new Set(Array.isArray(prev?.content) ? (prev!.content as Block[]).filter(b => b.type === 'tool_use').map(b => b.id) : []);
+        blocks = blocks.filter(b => b.type !== 'tool_result' || asked.has(b.tool_use_id));
+      }
+      blocks = blocks.filter(b => b.type !== 'text' || (b.text ?? '').trim());
+      if (blocks.length) out.push({ role: m.role, content: blocks });
+    }
+    // Merge adjacent same-role turns (can appear after stripping), then trim the ends.
+    const merged: Msg[] = [];
+    for (const m of out) {
+      const last = merged[merged.length - 1];
+      if (last && last.role === m.role) {
+        const a = Array.isArray(last.content) ? last.content as Block[] : [{ type: 'text', text: String(last.content) }];
+        const b = Array.isArray(m.content) ? m.content as Block[] : [{ type: 'text', text: String(m.content) }];
+        last.content = [...a, ...b];
+      } else merged.push({ ...m });
+    }
+    while (merged.length && merged[0].role !== 'user') merged.shift();
+    while (merged.length && merged[merged.length - 1].role !== 'assistant') merged.pop();
+    const changed = merged.length !== this.history.length;
+    this.history = merged;
+    if (changed && merged.length) this.repair(); // trimming can orphan a pair; settle to a fixed point
   }
 
   /** Turns remembered from earlier sessions (for the chat log on open). */
@@ -61,6 +108,8 @@ export class GenieAgent {
         toolResults = undefined;
         let stop: string = 'end_turn';
         const results: ToolResult[] = [];
+        type AsstMsg = { content?: { type: string; id?: string }[] };
+        let assistant: AsstMsg | null = null;
         let calls = 0;
 
         for await (const ev of this.backend.step(req, this.abort.signal)) {
@@ -68,30 +117,44 @@ export class GenieAgent {
           else if (ev.type === 'tool_call') {
             calls++;
             const res = calls > LIMITS.toolCallsPerTurn
-              ? { id: ev.call.id, ok: false, content: 'error: too many tool calls this turn' }
+              ? { id: ev.call.id, ok: false, content: 'error: too many tool calls this turn — the rest were skipped; continue with fewer, bigger shapes' }
               : this.edit.execute(ev.call);
             results.push(res);
             cb.onToolCall(ev.call, res);
           } else if (ev.type === 'turn_end') {
             stop = ev.stopReason;
+            assistant = ev.assistantMessage as AsstMsg;
             this.history.push(ev.assistantMessage);
           } else if (ev.type === 'error') throw new Error(ev.message);
         }
+        if (!assistant) throw new Error('the genie stream ended early');
+        const issued = (assistant as AsstMsg).content ?? [];
 
-        if (stop !== 'tool_use' || results.length === 0) break;
+        // Every tool_use the model issued MUST get a tool_result in the next turn, even ones
+        // the stream never delivered (cut off by max_tokens) — otherwise the API rejects the
+        // whole conversation forever after.
+        const have = new Set(results.map(r => r.id));
+        for (const b of issued) {
+          if (b.type === 'tool_use' && b.id && !have.has(b.id)) results.push({ id: b.id, ok: false, content: stop === 'max_tokens' ? 'error: cut off — your reply was too long. Finish in fewer, bigger tool calls.' : 'error: not executed' });
+        }
+
+        if (results.length === 0) break;
         // Anthropic format: tool results are a user message of tool_result blocks.
         this.history.push({
           role: 'user',
           content: results.map(r => ({ type: 'tool_result', tool_use_id: r.id, content: r.content, is_error: !r.ok })),
         });
         toolResults = results;
+        // Keep working after tool calls, and after a max_tokens cut-off (the model picks up where it stopped).
+        if (stop !== 'tool_use' && stop !== 'max_tokens') break;
       }
       // Keep history bounded (system prompt carries the persona; older turns matter little).
-      if (this.history.length > 40) { this.history = this.history.slice(-30); while (this.history.length && (this.history[0] as { role: string }).role !== 'user') this.history.shift(); }
+      if (this.history.length > 40) this.history = this.history.slice(-30);
+      this.repair();
       this.persist();
       cb.onDone();
     } catch (e) {
-      while (this.history.length && (this.history[this.history.length - 1] as { role: string }).role !== 'assistant') this.history.pop();
+      this.repair();
       this.persist();
       if ((e as Error).name !== 'AbortError') cb.onError((e as Error).message);
       else cb.onDone();
