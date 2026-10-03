@@ -1,9 +1,9 @@
-// Maple's World — Genie Edge Function.
+// Maple's World — Genie Edge Function (v6: builds memory, notes, Guild, remember tool; flexible key secret).
 // Holds the Anthropic key, verifies the caller owns the world, rate-limits, and streams one
 // model step back as NDJSON GenieEvents. The client executes tools and calls again with results.
 //
-// Secrets:  supabase secrets set ANTHROPIC_API_KEY=sk-ant-...   [GENIE_MODEL=claude-sonnet-4-5]
-// Deploy:   npm run deploy:genie   (copies shared/genie-tools.ts alongside first)
+// Secrets:  ANTHROPIC_API_KEY (or `maples-world-api-key`, as created in the dashboard)   [GENIE_MODEL=claude-sonnet-4-5]
+// Deploy:   npm run deploy:genie   (copies shared/*.ts alongside first)
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -12,10 +12,10 @@ import { SPECIES } from './taxonomy.ts';
 import { RECIPES } from './chemistry.ts';
 
 const RECIPE_LIST = RECIPES.map(r => `${r.formula} = ${r.name} ← ${Object.entries(r.needs).map(([s, n]) => `${n} ${s}`).join(' + ')}`).join('\n');
+const SPECIES_LIST = SPECIES.map(s => `${s.id} = ${s.binomial} (${s.common}; ${s.kingdom}/${s.phylum}; ${s.tier}; ${s.habitats.join(',')}${s.diet ? '; eats ' + s.diet.join('/') : ''})`).join('\n');
 
-const SPECIES_LIST = SPECIES.map(s => `${s.id} = ${s.binomial} (${s.common}; ${s.kingdom}/${s.phylum}; ${s.tier}; ${s.habitats.join(',')})`).join('\n');
-
-const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
+// Accepts either secret name; the dashboard secret was created as `maples-world-api-key`.
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? Deno.env.get('maples-world-api-key') ?? Deno.env.get('MAPLES_WORLD_API_KEY') ?? '';
 const MODEL = Deno.env.get('GENIE_MODEL') ?? 'claude-sonnet-4-5';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -30,7 +30,7 @@ const CORS = {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
-  if (!ANTHROPIC_API_KEY) return json({ error: 'ANTHROPIC_API_KEY not configured' }, 500);
+  if (!ANTHROPIC_API_KEY) return json({ error: 'Anthropic API key secret not configured' }, 500);
 
   // --- auth: user-scoped client honors RLS, so a world lookup doubles as an ownership check.
   const auth = req.headers.get('authorization') ?? '';
@@ -55,6 +55,12 @@ Deno.serve(async (req) => {
   const messages = sanitizeMessages(body.messages).slice(-30);
   if (messages.length === 0 || (messages[messages.length - 1] as { role: string }).role !== 'user') return json({ error: 'last message must be from user' }, 400);
 
+  // Context is player-supplied: cap sizes before it reaches the prompt.
+  const ctx = body.context ?? ({} as GenieRequest['context']);
+  const builds = (Array.isArray(ctx.builds) ? ctx.builds : []).slice(-6).map(b => ({ id: String(b.id).slice(0, 24), wish: String(b.wish).slice(0, 120), min: b.min, max: b.max, blocks: b.blocks }));
+  const notes = (Array.isArray(ctx.notes) ? ctx.notes : []).slice(-20).map(n => String(n).slice(0, 200));
+  const safeCtx = { player: ctx.player, facing: ctx.facing, target: ctx.target, surfaceY: ctx.surfaceY, timeOfDay: ctx.timeOfDay };
+
   const system = `${GENIE_SYSTEM_PROMPT}
 
 SPECIES:
@@ -63,8 +69,14 @@ ${SPECIES_LIST}
 RECIPES:
 ${RECIPE_LIST}
 
-Current context (JSON): ${JSON.stringify(body.context ?? {})}
-Interpret positions relative to this. If "target" is non-null, the player is pointing at that block — treat it as the anchor for "here"/"there".`;
+Current context (JSON): ${JSON.stringify(safeCtx)}
+Interpret positions relative to this. If "target" is non-null, the player is pointing at that block — treat it as the anchor for "here"/"there".
+
+Your builds so far (oldest → newest):
+${builds.length ? builds.map(b => `- [${b.id}] "${b.wish}" box (${b.min.x},${b.min.y},${b.min.z})–(${b.max.x},${b.max.y},${b.max.z}) blocks: ${Object.entries(b.blocks).map(([k, v]) => `${v} ${k}`).join(', ')}`).join('\n') : '(nothing yet)'}
+
+Your notes about this player and world:
+${notes.length ? notes.map(n => `- ${n}`).join('\n') : '(none yet)'}`;
 
   const upstream = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
