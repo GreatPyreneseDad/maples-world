@@ -192,6 +192,7 @@ class Game {
     // Mesh the spawn area before first frame so there's no pop-in.
     this.chunks.remeshBudget = 400; this.chunks.update(0, 0, VIEW_RADIUS); this.chunks.remeshBudget = 6;
 
+    this.hotbar.onUse = id => { if (!this.chat.isOpen && !this.micro.active && !this.input.captured) this.useTool(id); };
     this.chat.onSubmit = t => this.wish(t);
     this.chat.onClose = () => { this.input.captured = false; this.input.requestLock(); };
 
@@ -280,13 +281,7 @@ class Game {
         const name = BLOCKS[t.id].name;
         if (this.world.setBlock(t.block[0], t.block[1], t.block[2], AIR)) this.drops.burst(t.block[0], t.block[1], t.block[2], drawAtoms(name, 2 + (Math.random() < 0.5 ? 1 : 0)));
       } else if (btn === 2) {
-        const held = this.hotbar.selected;
-        if (held === LAMP_ITEM) { this.summon(); continue; }
-        if (held === MICROSCOPE_ITEM) { if (t) this.enterMicro(this.substrateOf(t.id, t.block), 'microscope'); else this.toast('Point the microscope at water, soil, leaves or wood'); continue; }
-        if (held === SHRINK_ITEM) { const f = Math.floor(this.player.pos.y) - 1; const under = this.world.getBlock(Math.floor(this.player.pos.x), f, Math.floor(this.player.pos.z)); this.enterMicro(this.substrateOf(under, [Math.floor(this.player.pos.x), f, Math.floor(this.player.pos.z)]), 'shrink'); continue; }
-        if (held === GOGGLES_ITEM) continue;
-        if (held === FLASK_ITEM) { this.toggleLab(true); continue; }
-        if (held === SEEDS_ITEM) { this.plantSeed(); continue; }
+        if (this.hotbar.holdingTool) { this.useTool(this.hotbar.selected); continue; }
         if (!t) continue;
         const [x, y, z] = [t.block[0] + t.normal[0], t.block[1] + t.normal[1], t.block[2] + t.normal[2]];
         if (this.player.intersectsBlock(x, y, z)) continue;
@@ -294,6 +289,17 @@ class Game {
         this.world.setBlock(x, y, z, this.hotbar.selected);
       }
     }
+  }
+
+  /** Activate a tool item — right-click, or double-tap its number key. */
+  useTool(held: number) {
+    const t = this.player.target;
+    if (held === LAMP_ITEM) { this.summon(); return; }
+    if (held === MICROSCOPE_ITEM) { if (t) this.enterMicro(this.substrateOf(t.id, t.block), 'microscope'); else this.toast('Point the microscope at water, soil, leaves or wood'); return; }
+    if (held === SHRINK_ITEM) { const f = Math.floor(this.player.pos.y) - 1; const under = this.world.getBlock(Math.floor(this.player.pos.x), f, Math.floor(this.player.pos.z)); this.enterMicro(this.substrateOf(under, [Math.floor(this.player.pos.x), f, Math.floor(this.player.pos.z)]), 'shrink'); return; }
+    if (held === GOGGLES_ITEM) { this.toast('Goggles on — every living thing nearby shows its name'); return; }
+    if (held === FLASK_ITEM) { this.toggleLab(true); return; }
+    if (held === SEEDS_ITEM) { this.plantSeed(); return; }
   }
 
   // ---- the small world -----------------------------------------------------
