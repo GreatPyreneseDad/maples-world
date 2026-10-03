@@ -31,3 +31,24 @@ test('the real genie answers, builds, and iterates on its own build', async ({ p
   expect(r.log1.some((t: string) => t.startsWith('✦'))).toBe(true);
   expect(r.blueNow).toBeGreaterThan(0);
 });
+
+test('an oversized wish (your birthday one) completes or fails gracefully, and the next wish still works', async ({ page }) => {
+  test.setTimeout(300_000);
+  await page.goto('/');
+  await page.waitForFunction(() => (window as any).game?.agent !== undefined, null, { timeout: 90_000 });
+  const r = await page.evaluate(`(async () => {
+    const g = window.game; g.overlay.hidden = true; g.summon();
+    const wish = (text) => new Promise(res => { const orig = g.chat.setBusy.bind(g.chat); g.chat.setBusy = (b) => { orig(b); if (!b) { g.chat.setBusy = orig; res(); } }; g.chat.onSubmit(text); });
+    await wish('put balloons shaped like hearts and spheres around the world and a huge rainbow cloud that says happy birthday maple in the sky');
+    const log1 = [...document.querySelectorAll('#chat-log .msg')].map(e => e.textContent);
+    const tools1 = log1.filter(t => t.startsWith('✦')).length;
+    await wish('now a tiny pink mushroom house next to me');
+    const log2 = [...document.querySelectorAll('#chat-log .msg')].map(e => e.textContent).slice(log1.length);
+    return { tools1, err1: log1.filter(t => t.includes('flickers')), tail1: log1.slice(-2), tools2: log2.filter(t => t.startsWith('✦')).length, err2: log2.filter(t => t.includes('flickers')), tail2: log2.slice(-1), builds: g.edit.builds.length };
+  })()`);
+  console.log(JSON.stringify(r, null, 1));
+  expect(r.tools1).toBeGreaterThan(5);
+  expect(r.err1).toEqual([]);
+  expect(r.err2).toEqual([]);
+  expect(r.tools2).toBeGreaterThan(0);
+});

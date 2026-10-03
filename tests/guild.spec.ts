@@ -15,13 +15,24 @@ test('every quest animal has a real, obtainable favourite food (or is domestic w
 async function boot(page: Page) {
   await page.goto('/');
   await page.waitForFunction(() => (window as any).game?.guild !== undefined, null, { timeout: 60_000 });
-  await page.evaluate(() => { const g = (window as any).game; g.life.settle(g.player.pos); g.overlay.hidden = true; });
+  await page.evaluate(() => {
+    const g = (window as any).game; g.life.settle(g.player.pos); g.overlay.hidden = true;
+    // Worlds are seeded at random; give the tests dependable ground: a grass patch around the player.
+    (window as any).grassPatch = (cx: number, cz: number, r: number) => {
+      for (let x = cx - r; x <= cx + r; x++) for (let z = cz - r; z <= cz + r; z++) {
+        const y = g.world.surfaceHeight(x, z);
+        g.world.setBlock(x, y, z, 1);
+        for (let dy = 1; dy <= 3; dy++) g.world.setBlock(x, y + dy, z, 0);
+      }
+    };
+  });
 }
 
 test('feed quest: plant the favourite food, the animal eats it and becomes a friend', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     const g = (window as any).game;
+    (window as any).grassPatch(Math.floor(g.player.pos.x), Math.floor(g.player.pos.z), 14); // rabbits need grass wherever "ahead" lands
     const q = g.guild.offer('feed', 'rabbit');
     const subject = g.life.critters.find((c: any) => c.id === q.subjectId);
     const plant = g.life.plant(g.guild && (window as any).game.life.constructor.species(q.foodId), Math.floor(subject.pos.x) + 1, Math.floor(subject.pos.z));
@@ -102,6 +113,7 @@ test('rank and friends persist across reload; the seed pouch plants real plants 
     const g = (window as any).game;
     const clover = g.life.constructor.species('white-clover');
     const px = Math.floor(g.player.pos.x) + 3, pz = Math.floor(g.player.pos.z) + 3;
+    (window as any).grassPatch(px, pz, 1);
     const planted = g.life.plant(clover, px, pz);
     const duckOnLand = g.life.plant(g.life.constructor.species('duckweed'), px, pz);
     return { rank: g.guild.rank.name, friends: [...g.guild.befriended], planted: !!planted, growth: planted?.growth, duckOnLand: !!duckOnLand };

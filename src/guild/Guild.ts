@@ -115,10 +115,16 @@ export class Guild {
   }
 
   private spawnNear(sp: Species, at: { x: number; y: number; z: number }): Critter | null {
-    for (let tries = 0; tries < 10; tries++) {
-      const r = tries * 0.7;
-      const c = this.life.spawn(sp, at.x + Math.floor((Math.random() - 0.5) * 2 * r), at.z + Math.floor((Math.random() - 0.5) * 2 * r));
-      if (c) return c;
+    // Spiral outward from `at`, visiting every column once: habitat-picky species (a frog wants
+    // the pond's rim) are found reliably instead of by luck.
+    const first = this.life.spawn(sp, at.x, at.z);
+    if (first) return first;
+    for (let r = 1; r <= 7; r++) {
+      for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+        const c = this.life.spawn(sp, at.x + dx, at.z + dz);
+        if (c) return c;
+      }
     }
     return null;
   }

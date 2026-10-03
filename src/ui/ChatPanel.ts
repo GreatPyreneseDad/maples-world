@@ -49,7 +49,15 @@ export class ChatPanel {
     this.current = null;
     this.add('tool' + (res.ok ? '' : ' err'), `✦ ${call.name} → ${res.content}`);
   }
-  error(msg: string) { this.add('genie err', `The lamp flickers… ${msg}`); this.current = null; }
+  error(msg: string) {
+    console.error('[genie]', msg);
+    // Players see one short line; the full error goes to the console.
+    const short = /429|breather/.test(msg) ? 'I need a little breather — try again in a minute.'
+      : /401|403|unauthorized|not yours/.test(msg) ? 'I lost track of whose world this is — reload the page.'
+      : /502|400|model error/.test(msg) ? 'that wish tangled my magic. Try asking again, maybe in smaller pieces.'
+      : msg.length > 140 ? msg.slice(0, 140) + '…' : msg;
+    this.add('genie err', `The lamp flickers… ${short}`); this.current = null;
+  }
 
   private add(cls: string, text: string) {
     const d = document.createElement('div');
