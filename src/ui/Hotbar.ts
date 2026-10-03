@@ -18,13 +18,22 @@ export class Hotbar {
   slots: number[] = DEFAULT_SLOTS.map(s => (typeof s === 'number' ? s : blockId(s)));
   active = 6;
   private el: HTMLElement;
+  private lastKey = -1;
+  private lastKeyAt = 0;
+  /** Double-tap a slot's number (or press it again while selected) → use the item, same as right-click. */
+  onUse?: (id: number) => void;
 
   constructor(el: HTMLElement) {
     this.el = el;
     this.render();
     window.addEventListener('keydown', e => {
       const n = Number(e.key);
-      if (n >= 1 && n <= 9 && !(e.target instanceof HTMLInputElement)) this.select(n - 1);
+      if (!(n >= 1 && n <= 9) || e.target instanceof HTMLInputElement || e.repeat) return;
+      const i = n - 1, now = performance.now();
+      const doubleTap = this.lastKey === i && now - this.lastKeyAt < 400;
+      this.lastKey = i; this.lastKeyAt = now;
+      if (doubleTap || (this.active === i && isTool(this.slots[i]))) { this.select(i); this.onUse?.(this.slots[i]); return; }
+      this.select(i);
     });
   }
 
