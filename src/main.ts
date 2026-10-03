@@ -49,6 +49,7 @@ class Game {
   atoms!: ElementInventory;
   lab!: LabPanel;
   guild!: Guild;
+  genieNotes: string[] = [];
   guildPanel!: GuildPanel;
   seeds!: SeedPouch;
   microHud = document.getElementById('micro-hud')!;
@@ -181,6 +182,16 @@ class Game {
       ? new SupabaseGenieBackend(SUPABASE_URL, accessToken, SUPABASE_KEY)
       : new OfflineGenie();
     this.agent = new GenieAgent(backend, this.edit, this.meta.id);
+    // The genie's memory of its own work and of the player, per world.
+    try { this.edit.builds = JSON.parse(localStorage.getItem(`maples:genie-builds:${this.meta.id}`) ?? '[]'); } catch { /* fresh */ }
+    this.edit.onBuildsChange = b => { try { localStorage.setItem(`maples:genie-builds:${this.meta.id}`, JSON.stringify(b)); } catch { /* quota */ } };
+    try { this.genieNotes = JSON.parse(localStorage.getItem(`maples:genie-notes:${this.meta.id}`) ?? '[]'); } catch { /* fresh */ }
+    this.edit.life!.remember = note => {
+      if (!note.trim()) throw new Error('empty note');
+      this.genieNotes.push(note.trim()); if (this.genieNotes.length > 20) this.genieNotes.shift();
+      try { localStorage.setItem(`maples:genie-notes:${this.meta.id}`, JSON.stringify(this.genieNotes)); } catch { /* quota */ }
+      return `remembered: ${note.trim()}`;
+    };
 
     this.sync = new WorldSync(this.world, this.meta.id, local, cloud);
     this.overlayStatus.textContent = 'loading your builds…';
@@ -415,7 +426,12 @@ class Game {
     this.input.captured = true;
     this.input.releaseLock();
     this.overlay.hidden = true;
-    this.chat.open("✨ You rubbed the lamp! I'm your genie. What shall we build?");
+    if (!this.chat.hasHistory) {
+      const past = this.agent.transcript.slice(-8);
+      for (const m of past) m.role === 'user' ? this.chat.user(m.text) : this.chat.genie(m.text);
+      this.chat.genie(past.length ? '✨ Back again! I remember what we were making. What next?' : "✨ You rubbed the lamp! I'm your genie. What shall we build?");
+    }
+    this.chat.open();
   }
 
   closeChat() { this.chat.close(); }
@@ -433,12 +449,16 @@ class Game {
       target: t ? { x: t.block[0], y: t.block[1], z: t.block[2] } : null,
       surfaceY: this.world.surfaceHeight(Math.floor(p.x + facing.x * 6), Math.floor(p.z + facing.z * 6)),
       timeOfDay: 0.5,
+      builds: this.edit.builds.slice(-6),
+      notes: this.genieNotes,
     };
+    this.edit.beginBuild(text);
+    const finish = () => { const b = this.edit.endBuild(); if (b) this.toast(`✦ built: ${Object.entries(b.blocks).map(([k, v]) => `${v} ${k}`).slice(0, 3).join(', ')}`); };
     await this.agent.say(text, ctx, {
       onText: d => this.chat.genieDelta(d),
       onToolCall: (c, r) => { this.chat.tool(c, r); this.chunks.remeshBudget = 24; },
-      onDone: () => { this.chat.setBusy(false); this.genie.thinking = false; this.chunks.remeshBudget = 6; },
-      onError: m => { this.chat.error(m); this.chat.setBusy(false); this.genie.thinking = false; },
+      onDone: () => { finish(); this.chat.setBusy(false); this.genie.thinking = false; this.chunks.remeshBudget = 6; },
+      onError: m => { finish(); this.chat.error(m); this.chat.setBusy(false); this.genie.thinking = false; },
     });
   }
 

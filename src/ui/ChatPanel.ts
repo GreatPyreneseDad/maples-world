@@ -25,6 +25,7 @@ export class ChatPanel {
   }
 
   get isOpen() { return !this.root.hidden; }
+  get hasHistory() { return this.log.childElementCount > 0; }
 
   open(greeting?: string) {
     this.root.hidden = false;

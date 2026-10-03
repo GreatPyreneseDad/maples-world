@@ -23,9 +23,29 @@ export class GenieAgent {
   private abort: AbortController | null = null;
   busy = false;
 
-  constructor(private backend: GenieBackend, private edit: WorldEdit, private worldId: string) {}
+  private key: string;
 
-  reset() { this.history = []; }
+  constructor(private backend: GenieBackend, private edit: WorldEdit, private worldId: string) {
+    this.key = `maples:genie-history:${worldId}`;
+    try { this.history = JSON.parse(localStorage.getItem(this.key) ?? '[]'); } catch { this.history = []; }
+    // A history must start with a user turn and end with an assistant turn to be resumable.
+    while (this.history.length && (this.history[0] as { role: string }).role !== 'user') this.history.shift();
+    while (this.history.length && (this.history[this.history.length - 1] as { role: string }).role !== 'assistant') this.history.pop();
+  }
+
+  /** Turns remembered from earlier sessions (for the chat log on open). */
+  get transcript(): { role: 'user' | 'assistant'; text: string }[] {
+    const out: { role: 'user' | 'assistant'; text: string }[] = [];
+    for (const m of this.history as { role: 'user' | 'assistant'; content: unknown }[]) {
+      if (typeof m.content === 'string') out.push({ role: m.role, text: m.content });
+      else if (Array.isArray(m.content)) { const text = (m.content as { type: string; text?: string }[]).filter(b => b.type === 'text' && b.text).map(b => b.text!).join(' '); if (text) out.push({ role: m.role, text }); }
+    }
+    return out;
+  }
+
+  private persist() { try { localStorage.setItem(this.key, JSON.stringify(this.history)); } catch { /* quota */ } }
+
+  reset() { this.history = []; this.persist(); }
   cancel() { this.abort?.abort(); }
 
   async say(userText: string, context: GenieRequest['context'], cb: AgentCallbacks) {
@@ -67,9 +87,12 @@ export class GenieAgent {
         toolResults = results;
       }
       // Keep history bounded (system prompt carries the persona; older turns matter little).
-      if (this.history.length > 40) this.history = this.history.slice(-30);
+      if (this.history.length > 40) { this.history = this.history.slice(-30); while (this.history.length && (this.history[0] as { role: string }).role !== 'user') this.history.shift(); }
+      this.persist();
       cb.onDone();
     } catch (e) {
+      while (this.history.length && (this.history[this.history.length - 1] as { role: string }).role !== 'assistant') this.history.pop();
+      this.persist();
       if ((e as Error).name !== 'AbortError') cb.onError((e as Error).message);
       else cb.onDone();
     } finally {

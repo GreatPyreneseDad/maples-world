@@ -24,6 +24,39 @@ export class OfflineGenie implements GenieBackend {
     const y0 = groundY + 1;
 
     const creature = SPECIES.find(sp => sp.tier === 'macro' && (text.includes(sp.common.toLowerCase()) || text.includes(sp.binomial.toLowerCase()) || text.includes(sp.common.toLowerCase().split(' ').pop()!)));
+    // Iterate on the last thing built: recolour, grow, raise, remove.
+    const lastBuild = req.context.builds?.[req.context.builds.length - 1];
+    const refersBack = /\b(it|that|the (house|tower|wall|tree|ball|rainbow|roof|thing|last one))\b/.test(text) && !/build|make (me )?a\b|spawn|bring/.test(text);
+    if (lastBuild && refersBack) {
+      const last = lastBuild;
+      const box = { from: last.min, to: last.max };
+      const h = last.max.y - last.min.y + 1;
+      if (color && /colou?r|paint|make it|turn it/.test(text)) {
+        yield say(`Repainting it ${color}!`);
+        for (const b of Object.keys(last.blocks)) if (b !== color && b !== 'air') call('replace', { ...box, find: b as BlockName, block: color });
+      } else if (/taller|higher|raise/.test(text)) {
+        const main = (Object.entries(last.blocks).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'planks') as BlockName;
+        yield say('Up it goes!');
+        call('fill', { from: { x: last.min.x, y: last.max.y + 1, z: last.min.z }, to: { x: last.max.x, y: last.max.y + Math.max(2, Math.round(h * 0.5)), z: last.max.z }, block: main, hollow: true });
+      } else if (/bigger|wider|larger/.test(text)) {
+        const main = (Object.entries(last.blocks).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'planks') as BlockName;
+        yield say('Bigger — stretching the walls!');
+        call('fill', { from: { x: last.min.x - 1, y: last.min.y, z: last.min.z - 1 }, to: { x: last.max.x + 1, y: last.max.y, z: last.max.z + 1 }, block: main, hollow: true });
+        call('clear', { from: { x: last.min.x, y: last.min.y, z: last.min.z }, to: { x: last.max.x, y: last.max.y - 1, z: last.max.z } });
+      } else if (/remove|delete|get rid|destroy|clear/.test(text)) {
+        yield say('Gone in a puff of glitter.'); call('clear', box);
+      } else if (/door|window|hole|open/.test(text)) {
+        const cx = Math.round((last.min.x + last.max.x) / 2);
+        yield say('Cutting an opening on the near side.');
+        call('clear', { from: { x: cx, y: last.min.y, z: last.min.z }, to: { x: cx, y: last.min.y + 1, z: last.min.z } });
+      } else {
+        yield say(`I remember "${last.wish}" — try "make it taller", "make it blue", "bigger", "add a door", or "remove it". The real genie (with a Claude key) can do anything you ask.`);
+      }
+      for (const tc of calls) yield { type: 'tool_call', call: tc };
+      yield { type: 'turn_end', stopReason: 'end_turn', assistantMessage: { role: 'assistant', content: [{ type: 'text', text: '(offline genie iterated)' }] } };
+      return;
+    }
+
     if (/undo|oops|wrong|take it back/.test(text)) { yield say('Poof — undone!'); call('undo', { steps: 1 }); }
     else if (/atom|element|give me (some )?[a-z]+$/.test(text) && ELEMENTS.some(e => new RegExp(`\\b(${e.symbol.toLowerCase()}|${e.name})\\b`).test(text))) {
       const el = ELEMENTS.filter(e => new RegExp(`\\b(${e.symbol.toLowerCase()}|${e.name})\\b`).test(text)).sort((a, b) => b.name.length - a.name.length)[0];

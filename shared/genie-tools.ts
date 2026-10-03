@@ -35,6 +35,7 @@ export interface ToolInputs {
   spawn_creature: { species: string; count?: number; near?: Vec3 };
   identify: { radius?: number };
   give_element: { symbol: string; count?: number };
+  remember: { note: string };
 }
 export type ToolName = keyof ToolInputs;
 
@@ -51,6 +52,18 @@ export interface ToolResult {
   content: string;
 }
 
+/** A thing the genie made: everything it placed during one wish, as a box. */
+export interface BuildRecord {
+  id: string;
+  /** The wish that made it, verbatim. */
+  wish: string;
+  /** Inclusive bounding box of every block it touched. */
+  min: Vec3; max: Vec3;
+  /** Block name → count placed. */
+  blocks: Record<string, number>;
+  at: number;
+}
+
 /** What the client sends the Edge Function each turn. */
 export interface GenieRequest {
   worldId: string;
@@ -61,6 +74,10 @@ export interface GenieRequest {
     target: Vec3 | null;
     surfaceY: number;
     timeOfDay: number;
+    /** Most recent things the genie built (newest last) — "the house" means one of these. */
+    builds?: BuildRecord[];
+    /** Notes the genie chose to remember about this player and world. */
+    notes?: string[];
   };
   /** Conversation so far, in Anthropic Messages format (user/assistant turns). */
   messages: unknown[];
@@ -97,6 +114,7 @@ export const GENIE_TOOLS = [
   { name: 'undo', description: 'Undo the last N of your edits (default 1). Use when the player says it looks wrong.', input_schema: { type: 'object', properties: { steps: { type: 'integer' } } } },
   { name: 'spawn_creature', description: 'Bring a living thing into the world by its Latin binomial, common name, or id from the SPECIES list (macro tier only — micro life lives under the microscope). It appears near the player or at `near`. Water animals need water nearby. Max count 8.', input_schema: { type: 'object', properties: { species: { type: 'string' }, count: { type: 'integer' }, near: vec3 }, required: ['species'] } },
   { name: 'give_element', description: 'Drop atoms of a real element (by chemical symbol, e.g. "Au", "Na", "Cl") at the player\'s feet. Max 12 per call. Use when the player asks for an element or is one atom short of a recipe.', input_schema: { type: 'object', properties: { symbol: { type: 'string' }, count: { type: 'integer' } }, required: ['symbol'] } },
+  { name: 'remember', description: 'Write one short note to your long-term memory for this world: the player\'s name, what they like, what they are working on, a plan you agreed. It is shown to you every turn. Max 200 characters. Do not store anything private or sensitive.', input_schema: { type: 'object', properties: { note: { type: 'string' } }, required: ['note'] } },
   { name: 'identify', description: 'List the living things near the player with their binomials and distances. Use when asked "what is that?", "what lives here?", or to teach a name.', input_schema: { type: 'object', properties: { radius: { type: 'integer' } } } },
 ] as const;
 
@@ -121,6 +139,10 @@ How to build:
 - Big requests: plan in 3–8 tool calls, not 40 single blocks. Batch several tool calls in one turn.
 - After building, say what you made in one short sentence and offer one tiny follow-up idea.
 - If the player says undo / that's wrong / too big, call undo.
+
+Iterating: context.builds lists what you have already made, each with its bounding box and the wish that made it. When the player says "the house", "make it taller", "add a door", "paint it blue", "move the roof", find the matching build and EDIT IT IN PLACE inside that box — replace(find→block) to recolour, clear + fill to reshape, fill above max.y to extend upward. Do not rebuild from scratch unless asked. Describe what changed in one line. If two builds could match, pick the most recent and say which one you chose.
+
+Memory: context.notes are things you chose to remember (player's name, their favourites, half-finished plans). Use remember() when the player tells you something worth keeping — their name, a style they like, a project across many wishes. Greet a returning player by name if you know it.
 
 Life: the world is alive with real species in Whittaker's five kingdoms (Animalia, Plantae, Fungi, Protista, Monera). Use their real Latin binomials when you speak of them — say the name, then the common name: "Vulpes vulpes, the red fox". You can spawn_creature any macro species from the SPECIES list below, and identify what lives nearby. Micro life (protists, bacteria, tardigrades) is seen through the microscope or by shrinking — tell the player to try those. Teach lightly: one true fact at a time, never a lecture.
 
