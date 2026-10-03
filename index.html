@@ -37,6 +37,8 @@
     #chat header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.08); }
     #chat header .horn { width: 10px; height: 18px; background: linear-gradient(180deg, #ff3b3b, #ffe23a, #3ad46a, #3a8cff, #9b4bff); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
     #chat header .status { margin-left: auto; opacity: 0.7; font-size: 11px; }
+    #chat header #chat-close { background: rgba(255,255,255,0.1); color: var(--ink); border: 0; border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; margin-left: 8px; }
+    #chat header #chat-close:hover { background: rgba(255,255,255,0.2); }
     #chat .log { max-height: 220px; overflow-y: auto; padding: 8px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
     #chat .msg { padding: 6px 10px; border-radius: 10px; max-width: 90%; white-space: pre-wrap; }
     #chat .msg.user { align-self: flex-end; background: rgba(127,231,255,0.18); }
@@ -182,7 +184,7 @@
   <div id="toast"></div>
 
   <div id="chat" hidden>
-    <header><span class="horn"></span><span>Genie</span><span class="status" id="chat-status">ready</span></header>
+    <header><span class="horn"></span><span>Genie</span><span class="status" id="chat-status">ready</span><button type="button" id="chat-close" title="Close (Esc)">✕ close</button></header>
     <div class="log" id="chat-log"></div>
     <form id="chat-form" autocomplete="off">
       <input id="chat-input" placeholder="Tell the genie what to build…" maxlength="500" />

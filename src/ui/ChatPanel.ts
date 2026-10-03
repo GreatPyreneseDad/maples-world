@@ -19,6 +19,7 @@ export class ChatPanel {
       this.user(t);
       this.onSubmit?.(t);
     });
+    document.getElementById('chat-close')!.addEventListener('click', () => this.close());
     this.input.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); this.close(); } e.stopPropagation(); });
     this.input.addEventListener('keyup', e => e.stopPropagation());
   }
@@ -31,7 +32,7 @@ export class ChatPanel {
     setTimeout(() => this.input.focus(), 0);
   }
 
-  close() { this.root.hidden = true; this.input.blur(); this.onClose?.(); }
+  close() { if (this.root.hidden) return; this.root.hidden = true; this.input.blur(); this.onClose?.(); }
 
   setBusy(b: boolean) { this.send.disabled = b; this.status.textContent = b ? 'thinking…' : 'ready'; }
 
