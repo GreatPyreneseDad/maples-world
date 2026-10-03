@@ -1,12 +1,13 @@
 import type { World } from '../engine/World';
 import { BLOCKS, blockId, AIR } from '../engine/Blocks';
-import { LIMITS, type ToolCall, type ToolInputs, type ToolResult, type Vec3, type BlockName, BLOCK_NAMES } from '../../shared/genie-tools';
+import { LIMITS, type ToolCall, type ToolInputs, type ToolResult, type Vec3, type BlockName, type BuildRecord, BLOCK_NAMES } from '../../shared/genie-tools';
 
 /** What the genie may do to living things. Implemented by the game; kept behind an interface so WorldEdit stays testable. */
 export interface LifeApi {
   spawn(speciesQuery: string, count: number, near: Vec3 | null): string;
   identify(radius: number): string;
   giveElement(symbol: string, count: number): string;
+  remember?(note: string): string;
 }
 
 /** x, y, z, optional op-specific flag (fill uses 1 = shell). */
@@ -22,6 +23,30 @@ interface UndoEntry { label: string; changes: Change[] }
 export class WorldEdit {
   private undoStack: UndoEntry[] = [];
   readonly maxUndo = 50;
+  /** Everything built, newest last. The genie's memory of its own work. */
+  builds: BuildRecord[] = [];
+  private current: BuildRecord | null = null;
+  onBuildsChange?: (b: BuildRecord[]) => void;
+
+  /** Start grouping edits under one wish. */
+  beginBuild(wish: string) {
+    this.current = { id: `b${Date.now().toString(36)}`, wish: wish.slice(0, 120), min: { x: Infinity, y: Infinity, z: Infinity }, max: { x: -Infinity, y: -Infinity, z: -Infinity }, blocks: {}, at: Date.now() };
+  }
+  /** Close the group; keep it only if it placed something. */
+  endBuild() {
+    const b = this.current; this.current = null;
+    if (!b || !isFinite(b.min.x)) return null;
+    this.builds.push(b);
+    if (this.builds.length > 12) this.builds.shift();
+    this.onBuildsChange?.(this.builds);
+    return b;
+  }
+  private track(x: number, y: number, z: number, next: number) {
+    const b = this.current; if (!b) return;
+    b.min.x = Math.min(b.min.x, x); b.min.y = Math.min(b.min.y, y); b.min.z = Math.min(b.min.z, z);
+    b.max.x = Math.max(b.max.x, x); b.max.y = Math.max(b.max.y, y); b.max.z = Math.max(b.max.z, z);
+    const name = BLOCKS[next].name; b.blocks[name] = (b.blocks[name] ?? 0) + 1;
+  }
   /** Fires after any op so UI can flash / play sound. */
   onEdit?: (label: string, count: number) => void;
 
@@ -51,6 +76,7 @@ export class WorldEdit {
       case 'surface_height': return this.surfaceHeight(i);
       case 'undo': return this.undo((i as ToolInputs['undo']).steps ?? 1);
       case 'say': return 'ok';
+      case 'remember': { if (!this.life?.remember) throw new Error('no memory'); return this.life.remember(String((i as ToolInputs['remember']).note ?? '').slice(0, 200)); }
       case 'spawn_creature': { const inp = i as ToolInputs['spawn_creature']; if (!this.life) throw new Error('no life system'); return this.life.spawn(String(inp.species ?? ''), clampInt(inp.count ?? 1, 1, 8), inp.near ? this.vec(inp.near) : null); }
       case 'give_element': { const inp = i as ToolInputs['give_element']; if (!this.life) throw new Error('no chemistry'); return this.life.giveElement(String(inp.symbol ?? ''), clampInt(inp.count ?? 1, 1, 12)); }
       case 'identify': { if (!this.life) throw new Error('no life system'); return this.life.identify(clampInt((i as ToolInputs['identify']).radius ?? 16, 2, 48)); }
@@ -193,7 +219,7 @@ export class WorldEdit {
       const next = pick(cell);
       const prev = this.world.getBlockGen(x, y, z);
       if (prev === next) continue;
-      if (this.world.setBlock(x, y, z, next)) changes.push({ x, y, z, prev });
+      if (this.world.setBlock(x, y, z, next)) { changes.push({ x, y, z, prev }); this.track(x, y, z, next); }
     }
     if (changes.length) {
       this.undoStack.push({ label, changes });
