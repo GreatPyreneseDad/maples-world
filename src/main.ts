@@ -94,7 +94,7 @@ class Game {
       else if (!this.chat.isOpen && !this.guide?.isJournalOpen && !this.lab?.isOpen && !this.guildPanel?.isOpen && !this.seeds?.isOpen) this.overlay.hidden = false;
     });
     addEventListener('keydown', e => {
-      if (e.code === 'Escape' && this.chat.isOpen) this.closeChat();
+      if (e.code === 'Escape' && this.chat.isOpen) { e.preventDefault(); this.closeChat(); }
       if (e.code === 'KeyJ' && !this.chat.isOpen && this.guide) this.toggleJournal();
       if (e.code === 'KeyQ' && this.micro?.active) this.leaveMicro();
       if (e.code === 'KeyL' && !this.chat.isOpen && this.lab) this.toggleLab();
@@ -194,7 +194,14 @@ class Game {
 
     this.hotbar.onUse = id => { if (!this.chat.isOpen && !this.micro.active && !this.input.captured) this.useTool(id); };
     this.chat.onSubmit = t => this.wish(t);
-    this.chat.onClose = () => { this.input.captured = false; this.input.requestLock(); };
+    this.chat.onClose = () => {
+      this.input.captured = false;
+      this.genie.dismiss();
+      this.agent.cancel();
+      // Pointer lock can't be re-acquired from a keypress in most browsers; offer the click.
+      this.overlayStatus.textContent = 'The genie bows and slips back into the lamp. Click to keep playing.';
+      this.overlay.hidden = false;
+    };
 
     // First steps: the Guild reaches out once the player has looked around.
     setTimeout(() => { if (this.guild.active.length === 0 && this.guild.completed.length === 0 && !this.micro.active) { this.guild.offer('feed'); this.toast('✦ The Animal Protector Guild has a job for you — press G'); } }, 12_000);
