@@ -58,7 +58,7 @@ export class Player {
     if (inp.down('Space')) {
       const now = performance.now();
       if (!this.spaceHeld) {
-        if (now - this.lastSpaceTap < 260) { this.flying = !this.flying; this.vel.y = 0; }
+        if (now - this.lastSpaceTap < 350) { this.flying = !this.flying; this.vel.y = 0; }
         this.lastSpaceTap = now;
       }
       this.spaceHeld = true;

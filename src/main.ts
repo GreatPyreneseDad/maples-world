@@ -17,6 +17,7 @@ import { MicroWorld, type Substrate } from './life/MicroWorld';
 import { FieldGuide } from './ui/FieldGuide';
 import { findSpecies, SPECIES, SPECIES_BY_ID } from '../shared/taxonomy';
 import { ChatPanel } from './ui/ChatPanel';
+import { TouchControls } from './ui/TouchControls';
 import { WorldEdit } from './genie/WorldEdit';
 import { GenieEntity } from './genie/GenieEntity';
 import { GenieAgent, SupabaseGenieBackend, type GenieBackend } from './genie/GenieAgent';
@@ -52,6 +53,7 @@ class Game {
   genieNotes: string[] = [];
   guildPanel!: GuildPanel;
   seeds!: SeedPouch;
+  touch: TouchControls | null = null;
   microHud = document.getElementById('micro-hud')!;
   highlight: THREE.LineSegments;
   hud = document.getElementById('hud')!;
@@ -65,6 +67,7 @@ class Game {
   constructor() {
     const app = document.getElementById('app')!;
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
     this.renderer.setSize(innerWidth, innerHeight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     app.appendChild(this.renderer.domElement);
@@ -89,11 +92,26 @@ class Game {
       if (this.micro) { this.micro.camera.aspect = innerWidth / innerHeight; this.micro.camera.updateProjectionMatrix(); }
     });
     this.overlay.addEventListener('click', () => this.input.requestLock());
-    document.addEventListener('pointerlockchange', () => {
-      const locked = document.pointerLockElement === this.renderer.domElement;
+    this.input.onLock = locked => {
       if (locked) this.overlay.hidden = true;
       else if (!this.chat.isOpen && !this.guide?.isJournalOpen && !this.lab?.isOpen && !this.guildPanel?.isOpen && !this.seeds?.isOpen) this.overlay.hidden = false;
-    });
+    };
+    if (this.input.touchMode) {
+      document.body.classList.add('touch');
+      this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));   // phones: trade a little sharpness for frame rate
+      this.overlay.querySelector('b')!.textContent = 'Tap to play';
+      this.touch = new TouchControls(this.input, {
+        journal: () => this.toggleJournal(),
+        guild: () => this.togglePanel(this.guildPanel),
+        seeds: () => this.togglePanel(this.seeds),
+        lab: () => this.toggleLab(),
+        leaveMicro: () => this.leaveMicro(),
+      });
+    }
+    // The panels' own close buttons only hide the panel; hand control back to the player too.
+    for (const id of ['guild-close', 'seeds-close', 'lab-close', 'journal-close']) {
+      document.getElementById(id)!.addEventListener('click', () => { this.input.captured = false; this.input.requestLock(); });
+    }
     addEventListener('keydown', e => {
       if (e.code === 'Escape' && this.chat.isOpen) { e.preventDefault(); this.closeChat(); }
       if (e.code === 'KeyJ' && !this.chat.isOpen && this.guide) this.toggleJournal();
@@ -172,7 +190,7 @@ class Game {
     this.guild.onProgress = () => this.guildPanel.renderHud();
     this.guild.onComplete = q => { this.toast(`✓ ${q.title} — +${q.points} · ${SPECIES_BY_ID[q.speciesId].binomial} trusts you now`); this.guildPanel.renderHud(); if (this.guildPanel.isOpen) this.guildPanel.render(); };
     this.guild.onRank = name => this.toast(`★ New rank: ${name}`);
-    this.seeds.onPick = sp => this.toast(`Seed: ${sp.binomial} — ${sp.common}`);
+    this.seeds.onPick = sp => { this.toast(`Seed: ${sp.binomial} — ${sp.common}`); this.input.captured = false; this.input.requestLock(); };
     this.life.onEvent = ((orig) => (kind: 'ate' | 'sheltered', c: any, other?: any) => { orig?.(kind, c, other); if (kind === 'ate' && other) this.toast(`${c.sp.common} ate ${other.sp.common} — ${c.sp.binomial} likes you`); })(this.life.onEvent);
     this.guide.onDiscover = sp => this.toast(`✦ New in your journal: ${sp.binomial} — ${sp.common}`);
     this.guide.onChange = ids => { void cloud?.saveDiscoveries(this.meta.id, ids).catch(e => { this.sync.lastError = String(e.message); }); };
@@ -209,13 +227,14 @@ class Game {
       this.input.captured = false;
       this.genie.dismiss();
       this.agent.cancel();
+      if (this.input.touchMode) { this.input.requestLock(); return; }
       // Pointer lock can't be re-acquired from a keypress in most browsers; offer the click.
       this.overlayStatus.textContent = 'The genie bows and slips back into the lamp. Click to keep playing.';
       this.overlay.hidden = false;
     };
 
     // First steps: the Guild reaches out once the player has looked around.
-    setTimeout(() => { if (this.guild.active.length === 0 && this.guild.completed.length === 0 && !this.micro.active) { this.guild.offer('feed'); this.toast('✦ The Animal Protector Guild has a job for you — press G'); } }, 12_000);
+    setTimeout(() => { if (this.guild.active.length === 0 && this.guild.completed.length === 0 && !this.micro.active) { this.guild.offer('feed'); this.toast(this.input.touchMode ? '✦ The Animal Protector Guild has a job for you — tap Guild' : '✦ The Animal Protector Guild has a job for you — press G'); } }, 12_000);
     this.renderer.setAnimationLoop(() => this.frame());
     (window as unknown as { game: Game }).game = this; // debugging & smoke tests
   }
@@ -241,8 +260,10 @@ class Game {
   frame() {
     this.timer.update();
     const dt = this.timer.getDelta();
-    if (this.micro.active) { this.microFrame(dt); return; }
+    this.touch?.setState(this.input.locked && !this.input.captured, this.micro.active ? this.micro.mode : false);
+    if (this.micro.active) { this.microFrame(dt); this.input.endFrame(); return; }
     this.player.update(dt);
+    this.input.endFrame();
     this.handleClicks();
     this.hotbar.scroll(this.input.takeWheel());
 
@@ -340,7 +361,11 @@ class Game {
     this.highlight.visible = false;
     this.scene.visible = false;
     this.microHud.hidden = false;
-    this.microHud.innerHTML = mode === 'microscope'
+    this.microHud.innerHTML = this.input.touchMode
+      ? (mode === 'microscope'
+        ? `🔬 Microscope — ${this.micro.description} · <b>left thumb</b> pan · <b>drag</b> turn · <b>+ −</b> zoom`
+        : `✨ You shrank into ${this.micro.description} · <b>left thumb</b> swim · <b>drag</b> look · <b>Jump / Down</b> rise and sink`)
+      : mode === 'microscope'
       ? `🔬 Microscope — ${this.micro.description} · <b>wheel</b> zoom · <b>WASD</b> pan · <b>Q</b> put it down`
       : `✨ You shrank into ${this.micro.description} · <b>WASD</b> swim · <b>Space/C</b> up/down · <b>Q</b> grow back`;
     this.toast(mode === 'microscope' ? 'Looking closer…' : 'Shrinking…');

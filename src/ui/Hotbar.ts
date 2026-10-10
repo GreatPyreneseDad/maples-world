@@ -55,7 +55,12 @@ export class Hotbar {
       if (isTool(id)) label.textContent = TOOL_LABEL[id];
       else { const b = BLOCKS[id]; sw.style.background = '#' + b.colors[1].toString(16).padStart(6, '0'); label.textContent = b.name; }
       d.append(sw, label);
-      d.addEventListener('mousedown', ev => { ev.stopPropagation(); this.select(i); });
+      d.addEventListener('pointerdown', ev => {
+        ev.stopPropagation();
+        // Touch has no right-click: tapping the tool you already hold uses it.
+        if (ev.pointerType !== 'mouse' && this.active === i && isTool(id)) { this.onUse?.(id); return; }
+        this.select(i);
+      });
       this.el.appendChild(d);
     });
   }
