@@ -80,7 +80,7 @@ const BW = 360, BD = 440, FR = 16, HEAD = 128, TRAY = 64, LW = BW + FR * 2, LH =
 const BX = FR, BY = HEAD, GUTTER_Y = BD - 130, PUSH_MIN = 60, PUSH_MAX = 140;
 
 /* ---------- saved (this browser only) ---------- */
-const save = { sound:true, level:0, purse:50, bank:0 };
+const save = { sound:true, level:0, purse:200, bank:0 };
 try { Object.assign(save, JSON.parse(localStorage.getItem('piggy-pusher') || '{}')); } catch (e) {}
 const persist = () => { try { localStorage.setItem('piggy-pusher', JSON.stringify(save)); } catch (e) {} };
 
@@ -171,7 +171,7 @@ function drawPiece(name, s = 1) { const p = PIECES[name]; g.save(); g.scale(s * 
 /* ---------- the troupe and how each round grows ---------- */
 const PIGS = [
   { name:'Sir Oinksalot',     pieces:['tophat', 'bowtie'], news:'Push the clothes off the front edge' },
-  { name:'Dolly Hamilton',    pieces:['sunhat', 'pearls', 'shades'], news:'New: coin towers and big coins' },
+  { name:'Dolly Hamilton',    pieces:['sunhat', 'pearls', 'shades'], news:'New: coin towers and mega coins' },
   { name:'Hamlet the Kid',    pieces:['cowboy', 'bandana', 'boots'], news:'New: 3 pig tokens win a bonus spin' },
   { name:'Chef Truffle',      pieces:['chefhat', 'apron', 'moustache', 'spoon'], news:'New: piggy banks and gift boxes' },
   { name:'Lady Pigglesworth', pieces:['tiara', 'gown', 'pearls', 'fan'], news:'New: bumpers on the bed' },
@@ -181,16 +181,16 @@ function rules(n) {   // what the bed offers at round n (0-based); rounds past t
   const lap = Math.floor(n / PIGS.length);
   return { pig:PIGS[n % PIGS.length], towers:n >= 1, big:n >= 1, tokens:n >= 2, gems:n >= 2, banks:n >= 3, gifts:n >= 3,
     bumpers:n >= 4 ? (n >= 5 ? [[110, 250], [250, 250], [180, 335]] : [[120, 280], [240, 280]]) : [],
-    period:n >= 5 ? 2.7 : 3.4, towerH:[5, 8 + Math.min(n, 8)], prizeEvery:Math.max(6, 11 - Math.floor(n / 2)), lap };
+    period:n >= 5 ? 2.7 : 3.4, towerH:[8, 12 + Math.min(n, 8)], prizeEvery:Math.max(4, 7 - Math.floor(n / 2)), lap };
 }
 
 /* ---------- state ---------- */
 let playing = false, G = null;
-const R = { coin:15, big:23, gem:14, tower:16, piece:21, token:16, bank:22, gift:18, bumper:13 };
-const MASS = { coin:1, big:3, gem:1.2, tower:3, piece:2.2, token:1.4, bank:2.6, gift:2, bumper:1e9 };
+const R = { coin:15, big:23, mega:30, gem:14, tower:16, piece:21, token:16, bank:22, gift:18, bumper:13 };
+const MASS = { coin:1, big:3, mega:5, gem:1.2, tower:3, piece:2.2, token:1.4, bank:2.6, gift:2, bumper:1e9 };
 function body(type, x, y, extra) { return { type, x, y, r:R[type], m:MASS[type], fall:0, moved:0, spin:rnd(0, TAU), ...extra }; }
 function newGame() {
-  G = { n:save.level, purse:Math.max(20, save.purse), bank:save.bank, bodies:[], fx:[], queue:[], tokens:0, phase:0, front:PUSH_MIN, wallsT:0, dropCd:0, regenT:0, since:0, aimX:BW / 2, held:false,
+  G = { n:save.level, purse:Math.max(150, save.purse), bank:save.bank, bodies:[], fx:[], queue:[], tokens:0, phase:0, front:PUSH_MIN, wallsT:0, dropCd:0, regenT:0, since:0, aimX:BW / 2, held:false,
     banner:null, slot:null, cele:null, dancers:[], got:[], fever:0 };
   for (let i = 0; i < 104; i++) G.bodies.push(body('coin', rnd(20, BW - 20), rnd(160, BD - 20)));   // start nearly full, so every coin dropped pushes one toward the edge
   startRound(true);
@@ -236,12 +236,12 @@ function playerDrop(x) {
 }
 function prize() {
   const ru = G.rules, bag = ['big'];
-  if (ru.towers) bag.push('tower', 'tower'); if (ru.gems) bag.push('gem', 'gem'); if (ru.tokens) bag.push('token', 'token', 'token'); if (ru.banks) bag.push('bank'); if (ru.gifts) bag.push('gift');
+  if (ru.towers) bag.push('tower', 'tower', 'mega'); if (ru.gems) bag.push('gem', 'gem'); if (ru.tokens) bag.push('token', 'token', 'token'); if (ru.banks) bag.push('bank'); if (ru.gifts) bag.push('gift');
   if (!ru.towers) { bag.push('coin'); }
   G.queue.push({ t:0.5, type:pick(bag) });
 }
 function spawn(type, x) {
-  if (G.bodies.length > 200) return;
+  if (G.bodies.length > 185) { const v = { coin:1, big:10, mega:50 }[type]; if (v) { G.purse += v; G.bank += v; } if (G.bodies.length > 215 || v) return; }
   const ru = G.rules; x = x == null ? rnd(40, BW - 40) : x;
   if (type === 'tower') dropAt('tower', x, { stack:Math.round(rnd(ru.towerH[0], ru.towerH[1])) });
   else if (type === 'gem') dropAt('gem', x, { hue:pick([0, 200, 280, 140]) });
@@ -254,21 +254,23 @@ function burst(x, y, n, colors) { for (let i = 0; i < n; i++) G.fx.push({ kind:'
 function collect(b) {   // over the front edge: into the prize tray
   const x = b.x; G.fx.push({ kind:'fallcoin', x, y:BD, t:0, life:0.45, b });
   if (b.type === 'coin') { G.purse++; G.bank++; SFX.win(1); }
-  else if (b.type === 'big') { G.purse += 3; G.bank += 5; SFX.win(5); fxText(x, BD - 14, '+5', '#f5c542', 18); }
-  else if (b.type === 'gem') { G.bank += 10; SFX.item(); fxText(x, BD - 14, 'Gem +10', '#7fd3ff', 16); burst(x, BD - 6, 8, ['#7fd3ff', '#fff']); }
-  else if (b.type === 'tower') { G.purse += b.stack; G.bank += b.stack; SFX.topple(); SFX.win(b.stack); fxText(x, BD - 14, 'Tower +' + b.stack, '#f5c542', 18); burst(x, BD - 6, 12, ['#f5c542', '#fff6e6']); }
+  else if (b.type === 'big') { G.purse += 10; G.bank += 10; SFX.win(10); fxText(x, BD - 14, '+10', '#f5c542', 20); }
+  else if (b.type === 'mega') { G.purse += 50; G.bank += 50; SFX.fanfare(); fxText(x, BD - 30, 'MEGA +50', '#f5c542', 26); burst(x, BD - 6, 24, ['#f5c542', '#fff6e6', '#ff8fb0']); G.fever = 2.5; }
+  else if (b.type === 'gem') { G.bank += 20; G.purse += 20; SFX.item(); fxText(x, BD - 14, 'Gem +20', '#7fd3ff', 20); burst(x, BD - 6, 8, ['#7fd3ff', '#fff']); }
+  else if (b.type === 'tower') { G.purse += b.stack * 2; G.bank += b.stack * 2; SFX.topple(); SFX.win(b.stack); fxText(x, BD - 14, 'Tower +' + b.stack * 2, '#f5c542', 22); burst(x, BD - 6, 12, ['#f5c542', '#fff6e6']); }
   else if (b.type === 'token') { G.tokens++; SFX.item(); SFX.oink(); fxText(x, BD - 14, 'Token ' + G.tokens + '/3', '#ff8fb0', 16); if (G.tokens >= 3) { G.tokens = 0; G.queue.push({ t:0.7, slot:true }); } }
-  else if (b.type === 'bank') { SFX.smash(); SFX.oink(); fxText(x, BD - 30, 'Piggy bank!', '#ff8fb0', 20); burst(x, BD - 6, 22, ['#f5c542', '#ff8fb0', '#fff']); shower(12); G.fever = 2; }
+  else if (b.type === 'bank') { SFX.smash(); SFX.oink(); fxText(x, BD - 30, 'Piggy bank!', '#ff8fb0', 20); burst(x, BD - 6, 22, ['#f5c542', '#ff8fb0', '#fff']); shower(30, true); G.fever = 3; }
   else if (b.type === 'gift') gift(x);
   else if (b.type === 'piece') { G.got.push(b.piece); SFX.item(); SFX.oink(); fxText(x, BD - 30, PIECES[b.piece].name + '!', '#fff6e6', 20); burst(x, BD - 6, 18, ['#f5c542', '#ff8fb0', '#7fd3ff']); G.fx.push({ kind:'fly', piece:b.piece, x, y:BD, t:0, life:0.9 }); G.fever = 1.5;
     if (G.got.length >= G.rules.pig.pieces.length) G.queue.push({ t:1.1, cele:true }); }
 }
 function gift(x) {
-  const k = pick(['walls', 'shower', 'tower', 'big']); SFX.item(); burst(x, BD - 6, 14, ['#7fd3ff', '#f5c542', '#ff8fb0']); G.fever = 1.5;
+  const k = pick(['walls', 'shower', 'tower', 'big', 'mega']); SFX.item(); burst(x, BD - 6, 14, ['#7fd3ff', '#f5c542', '#ff8fb0']); G.fever = 1.5;
   if (k === 'walls') { G.wallsT = 25; SFX.walls(); fxText(x, BD - 30, 'Side walls up!', '#7fd3ff', 18); }
-  else if (k === 'shower') { shower(9); fxText(x, BD - 30, 'Coin shower!', '#f5c542', 18); }
+  else if (k === 'shower') { shower(24, true); fxText(x, BD - 30, 'Coin shower!', '#f5c542', 18); }
   else if (k === 'tower') { for (let i = 0; i < 2; i++) G.queue.push({ t:0.4 + i * 0.5, type:'tower' }); fxText(x, BD - 30, 'Two towers!', '#f5c542', 18); }
-  else { for (let i = 0; i < 3; i++) G.queue.push({ t:0.3 + i * 0.3, type:'big' }); fxText(x, BD - 30, 'Big coins!', '#f5c542', 18); }
+  else if (k === 'mega') { G.queue.push({ t:0.4, type:'mega' }); fxText(x, BD - 30, 'Mega coin!', '#f5c542', 20); }
+  else { for (let i = 0; i < 4; i++) G.queue.push({ t:0.3 + i * 0.3, type:'big' }); fxText(x, BD - 30, 'Big coins!', '#f5c542', 18); }
 }
 function lose(b) {
   G.fx.push({ kind:'gutter', x:b.x < BW / 2 ? -6 : BW + 6, y:b.y, t:0, life:0.35, b }); SFX.lost();
@@ -288,14 +290,14 @@ function startSlot() {
 function paySlot() {
   const r = G.slot.reels, cnt = {}; for (const s of r) cnt[s] = (cnt[s] || 0) + 1; const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0], n = cnt[top];
   if (n === 3) {
-    if (top === 'pig') { G.slot.msg = 'HOG WILD JACKPOT!'; shower(36, true); G.wallsT = Math.max(G.wallsT, 20); dance(4.5); SFX.fanfare(); SFX.oink(); }
-    else if (top === 'coin') { G.slot.msg = 'COIN SHOWER!'; shower(22); }
-    else if (top === 'gem') { G.slot.msg = 'GEM RAIN!'; for (let i = 0; i < 5; i++) G.queue.push({ t:0.4 + i * 0.25, type:'gem' }); }
-    else if (top === 'tower') { G.slot.msg = 'TOWER TRIO!'; for (let i = 0; i < 3; i++) G.queue.push({ t:0.4 + i * 0.4, type:'tower' }); }
-    else { G.slot.msg = 'WALLS UP!'; G.wallsT = 45; shower(10); SFX.walls(); }
+    if (top === 'pig') { G.slot.msg = 'HOG WILD JACKPOT!'; shower(80, true); G.queue.push({ t:1, type:'mega' }, { t:1.6, type:'mega' }); G.wallsT = Math.max(G.wallsT, 20); dance(4.5); SFX.fanfare(); SFX.oink(); }
+    else if (top === 'coin') { G.slot.msg = 'COIN SHOWER!'; shower(50, true); }
+    else if (top === 'gem') { G.slot.msg = 'GEM RAIN!'; for (let i = 0; i < 7; i++) G.queue.push({ t:0.4 + i * 0.25, type:'gem' }); }
+    else if (top === 'tower') { G.slot.msg = 'TOWER TRIO!'; for (let i = 0; i < 3; i++) G.queue.push({ t:0.4 + i * 0.4, type:'tower' }); G.queue.push({ t:1.8, type:'mega' }); }
+    else { G.slot.msg = 'WALLS UP!'; G.wallsT = 45; shower(25, true); SFX.walls(); }
     G.fever = 4; SFX.fanfare();
-  } else if (n === 2) { G.slot.msg = 'A PAIR!'; shower(top === 'pig' ? 12 : 7); if (top === 'walls') { G.wallsT = Math.max(G.wallsT, 15); } G.fever = 2; SFX.item(); }
-  else { G.slot.msg = 'OINK. HAVE FOUR.'; shower(4); SFX.oink(); }
+  } else if (n === 2) { G.slot.msg = 'A PAIR!'; shower(top === 'pig' ? 28 : 18, true); if (top === 'walls') { G.wallsT = Math.max(G.wallsT, 15); } G.fever = 2; SFX.item(); }
+  else { G.slot.msg = 'OINK. HAVE TEN.'; shower(10); SFX.oink(); }
 }
 function dance(life) { const seen = PIGS.slice(0, Math.min(PIGS.length, G.n + 1)); G.dancers = [0, 1, 2].map(i => ({ pig:seen[(G.n - i + seen.length * 3) % seen.length], i })); G.danceT = life; }
 
@@ -305,7 +307,7 @@ function update(dt) {
   G.clinks = 0; G.dropCd -= dt; G.fever = Math.max(0, G.fever - dt); G.wallsT = Math.max(0, G.wallsT - dt); if (G.danceT > 0) G.danceT -= dt;
   if (G.banner && (G.banner.t += dt) > G.banner.life) G.banner = null;
   // purse refills slowly so nobody is ever stuck
-  if (G.purse < 30) { G.regenT += dt; if (G.regenT > 0.8) { G.regenT = 0; G.purse++; } } else G.regenT = 0;
+  if (G.purse < 60) { G.regenT += dt; if (G.regenT > 0.35) { G.regenT = 0; G.purse++; } } else G.regenT = 0;
   if (G.held && !G.slot && !G.cele) { G.holdT -= dt; if (G.holdT <= 0) { playerDrop(G.aimX); G.holdT = 0.2; } }
   // things on their way down the chute
   for (const q of G.queue) q.t -= dt;
@@ -331,7 +333,7 @@ function update(dt) {
   G.fx = G.fx.filter(f => f.t < f.life);
   if ((update.sv = (update.sv || 0) + dt) > 3) { update.sv = 0; save.purse = G.purse; save.bank = G.bank; persist(); }
 }
-function celebrate() { G.cele = { t:0 }; G.purse += 15; dance(6); SFX.fanfare(); SFX.oink(); shower(10); G.fever = 6; }
+function celebrate() { G.cele = { t:0 }; G.purse += 50; dance(6); SFX.fanfare(); SFX.oink(); shower(24, true); G.fever = 6; }
 
 /* ---------- drawing the bed ---------- */
 function coinFace(r, col = ['#ffe58a', '#f5c542', '#b8860b'], mark = 'snout') {
@@ -346,7 +348,7 @@ function drawBody(b) {
   if (lift > 0) { g.fillStyle = 'rgba(0,0,0,.2)'; ell(b.x, b.y + 4, b.r * (1 - lift * 0.3), b.r * (1 - lift * 0.3)); g.fill(); }
   g.save(); g.translate(b.x, b.y - lift * 46); g.scale(sc, sc);
   if (b.type === 'coin') coinFace(b.r);
-  else if (b.type === 'big') { coinFace(b.r, ['#fff1b0', '#f7b500', '#a86f00'], null); g.fillStyle = '#a86f00'; g.font = '400 24px "Lilita One", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('5', 0, 1); }
+  else if (b.type === 'big' || b.type === 'mega') { const mega = b.type === 'mega'; if (mega) { g.fillStyle = 'rgba(255,240,150,' + (0.25 + 0.2 * Math.sin(tNow * 6)) + ')'; ell(0, 0, b.r + 6, b.r + 6); g.fill(); } coinFace(b.r, ['#fff1b0', '#f7b500', '#a86f00'], null); g.fillStyle = '#a86f00'; g.font = '400 ' + (mega ? 30 : 22) + 'px "Lilita One", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(mega ? '50' : '10', 0, 1); }
   else if (b.type === 'tower') { const wob = Math.sin(tNow * 6 + b.spin) * Math.min(1, b.moved / 85) * 3; g.fillStyle = 'rgba(0,0,0,.22)'; ell(4, 6, b.r + 3, b.r); g.fill(); for (let k = 0; k < b.stack; k++) { g.save(); g.translate(wob * k / b.stack, -k * 3.6); if (k === b.stack - 1) coinFace(b.r); else { ell(0, 2.6, b.r, b.r); g.fillStyle = k % 2 ? '#b8860b' : '#d9a520'; g.fill(); g.strokeStyle = '#8a6508'; g.lineWidth = 1; g.stroke(); } g.restore(); } }
   else if (b.type === 'gem') { const c = 'hsl(' + b.hue + ',85%,', r = b.r; g.fillStyle = 'rgba(0,0,0,.2)'; ell(2, 4, r, r * 0.8); g.fill(); poly(0, -r, r, -r * 0.2, r * 0.6, r, -r * 0.6, r, -r, -r * 0.2); shape(c + '62%)', c + '35%)'); poly(0, -r, r * 0.45, -r * 0.2, 0, r, -r * 0.45, -r * 0.2); shape(c + '78%)', null); g.fillStyle = 'rgba(255,255,255,.8)'; ell(-r * 0.3, -r * 0.4, 2.4, 1.4, -0.6); g.fill(); }
   else if (b.type === 'token') { coinFace(b.r, ['#ffd0de', '#ff8fb0', '#c9537a'], null); for (const s of [-1, 1]) { poly(s * 5, -8, s * 11, -13, s * 12, -5); shape('#ff8fb0', '#c9537a', 1); } ell(0, 1, 7, 5); shape('#f06a94', '#c9537a', 1); g.fillStyle = '#a8395e'; ell(-2.500, 1, 1.2, 1.8); g.fill(); ell(2.500, 1, 1.2, 1.8); g.fill(); }
@@ -427,7 +429,7 @@ function draw() {
 
   // dancers along the bottom of the bed
   if (G.danceT > 0) { const k = clamp(Math.min(G.danceT, 0.5) * 2, 0, 1); G.dancers.forEach((d, i) => { const big = i === 0, x = LW / 2 + (i === 0 ? 0 : i === 1 ? -118 : 118), y = BY + BD - 40 + (1 - k) * 220; g.save(); g.translate(x, y - (big ? 40 : 0)); const sc = big ? 1.75 : 1.15; g.scale(sc, sc); drawPig(big && G.cele ? ru.pig.pieces : d.pig.pieces, tNow + i * 0.35, { dance:true, happy:true, seed:i }); g.restore(); }); }
-  if (G.cele) { const k = Math.min(1, G.cele.t * 3), by = BY + 120; g.save(); g.translate(LW / 2, by); g.scale(k * (1 + Math.sin(tNow * 8) * 0.04), k); txt('FABULOUS!', 0, 0, 58, '#f5c542', 'center', '#24092b'); txt(ru.pig.name + ' is dressed', 0, 46, 21, '#fff6e6', 'center', '#24092b'); txt('+15 coins', 0, 74, 18, '#ff8fb0', 'center', '#24092b'); g.restore(); }
+  if (G.cele) { const k = Math.min(1, G.cele.t * 3), by = BY + 120; g.save(); g.translate(LW / 2, by); g.scale(k * (1 + Math.sin(tNow * 8) * 0.04), k); txt('FABULOUS!', 0, 0, 58, '#f5c542', 'center', '#24092b'); txt(ru.pig.name + ' is dressed', 0, 46, 21, '#fff6e6', 'center', '#24092b'); txt('+50 coins', 0, 74, 18, '#ff8fb0', 'center', '#24092b'); g.restore(); }
   // bonus spin
   if (G.slot) { const s = G.slot, k = Math.min(1, s.t * 4) * (s.t > 4.7 ? Math.max(0, (5 - s.t) / 0.3) : 1), cx = LW / 2, cy = BY + 215;
     g.save(); g.translate(cx, cy); g.scale(k, k);
