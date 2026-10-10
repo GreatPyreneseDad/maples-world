@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cat Herding · Maple's World</title>
+<meta name="description" content="Pick a puppy and herd the cats of a cat cafe to the customers who ordered them. Keep the other cats off the treats.">
+<meta property="og:title" content="Cat Herding">
+<meta property="og:description" content="A puppy, a cat cafe, and cats who would rather eat someone else's treats.">
+<meta property="og:url" content="https://maplesworld.org/cat-herding/">
+<meta name="theme-color" content="#2f5d57">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 6l6 6h8l6-6v14a10 10 0 0 1-20 0z' fill='%23f29a4a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700&display=swap">
+<style>
+/* Layout: a thin order-rail on top, the cafe floor filling the rest; menus are paper cards laid over the floor. */
+:root{
+  color-scheme: light;
+  --wall:#2f5d57;        /* deep sage wall */
+  --wall-2:#24484a;
+  --tile-a:#eaf4ee;      /* mint tile */
+  --tile-b:#d7ebe0;
+  --paper:#fffaf2;       /* menu card */
+  --ink:#2b2a33;
+  --ink-dim:#6c6a78;
+  --berry:#e8577e;       /* strawberry: cushions, hearts, primary button */
+  --butter:#ffd166;      /* stars, bark */
+  --walnut:#7a5236;
+  --line:rgba(43,42,51,.14);
+  --display:"Fredoka","Nunito",system-ui,sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--wall-2);color:var(--ink);font-family:var(--body);font-size:16px;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
+[hidden]{display:none!important}
+#app{height:100%;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0)}
+
+#rail{display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--wall);color:#fff;min-height:48px;flex-wrap:wrap}
+#rail .name{font-family:var(--display);font-weight:600;font-size:17px;margin-right:auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.14);border-radius:999px;padding:4px 12px;font-weight:700;font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}
+.chip i{font-style:normal;opacity:.8;font-weight:600}
+.ib{font:inherit;font-weight:700;font-size:14px;color:#fff;background:rgba(255,255,255,.14);border:0;border-radius:999px;height:36px;min-width:36px;padding:0 12px;cursor:pointer}
+.ib:hover{background:rgba(255,255,255,.26)}
+button:focus-visible{outline:3px solid var(--butter);outline-offset:2px}
+
+#stage{position:relative;flex:1;min-height:0}
+canvas#c{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hint{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--paper);border-radius:14px;padding:8px 14px;font-weight:600;font-size:14px;max-width:min(520px,calc(100% - 24px));text-align:center;box-shadow:0 4px 0 rgba(0,0,0,.12);pointer-events:none;transition:opacity .5s}
+#hint.off{opacity:0}
+#bark{position:absolute;right:16px;bottom:16px;width:88px;height:88px;border-radius:50%;border:0;font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink);cursor:pointer;
+  background:conic-gradient(var(--butter) calc(var(--p,1)*360deg),rgba(255,255,255,.55) 0);box-shadow:0 5px 0 rgba(0,0,0,.2)}
+#bark::before{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--paper);z-index:0}
+#bark span{position:relative;z-index:1;display:block;line-height:1.1}
+#bark small{font-family:var(--body);font-size:11px;font-weight:700;color:var(--ink-dim);display:block}
+#bark:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.2)}
+@media (hover:hover) and (pointer:fine){#bark{width:70px;height:70px;font-size:15px}}
+
+.veil{position:absolute;inset:0;display:flex;overflow-y:auto;padding:16px;background:rgba(36,72,74,.72);z-index:5;touch-action:pan-y}
+.card{margin:auto;width:min(760px,100%);background:var(--paper);border-radius:22px;padding:clamp(18px,4vw,30px);display:flex;flex-direction:column;gap:16px;box-shadow:0 8px 0 rgba(0,0,0,.18)}
+.card.small{width:min(420px,100%);text-align:center;align-items:center}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,8vw,56px);line-height:1;margin:0;color:var(--wall);text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:clamp(24px,5vw,32px);line-height:1.1;margin:0;text-wrap:balance}
+p{margin:0;line-height:1.5;color:var(--ink-dim);max-width:58ch}
+.home{color:var(--ink-dim);font-size:13px;font-weight:700;text-decoration:none;align-self:flex-start}
+.home:hover,.home:focus-visible{color:var(--berry)}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--berry)}
+
+.pups{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.pup{font:inherit;text-align:left;background:#fff;border:2px solid var(--line);border-radius:16px;padding:10px 12px 12px;cursor:pointer;display:flex;flex-direction:column;gap:6px;color:var(--ink);min-width:0}
+.pup:hover{border-color:var(--berry)}
+.pup[aria-pressed="true"]{border-color:var(--berry);box-shadow:0 4px 0 var(--berry);transform:translateY(-2px)}
+.pup canvas{width:100%;height:84px;background:var(--tile-a);border-radius:10px}
+.pup b{font-family:var(--display);font-weight:600;font-size:19px;line-height:1}
+.pup em{font-style:normal;font-size:12px;color:var(--ink-dim);font-weight:700}
+.pup span{font-size:13px;line-height:1.35;color:var(--ink-dim)}
+.stat{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--ink-dim)}
+.stat u{display:block;height:6px;border-radius:3px;background:var(--line);text-decoration:none;overflow:hidden}
+.stat u::after{content:"";display:block;height:100%;width:calc(var(--v)*20%);background:var(--wall);border-radius:3px}
+
+.go{font-family:var(--display);font-weight:600;font-size:19px;color:#fff;background:var(--berry);border:0;border-radius:999px;padding:13px 28px;cursor:pointer;box-shadow:0 5px 0 #b73a5d;align-self:flex-start}
+.go:active{transform:translateY(3px);box-shadow:0 2px 0 #b73a5d}
+.go.alt{background:#fff;color:var(--ink);box-shadow:0 5px 0 var(--line);border:2px solid var(--line)}
+.rowb{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.card.small .go{align-self:center}
+
+.levels{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.lv{font:inherit;text-align:left;background:#fff;border:2px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px;color:var(--ink);min-height:86px}
+.lv:hover:not(:disabled){border-color:var(--berry)}
+.lv:disabled{opacity:.45;cursor:default}
+.lv small{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)}
+.lv b{font-family:var(--display);font-weight:600;font-size:17px;line-height:1.15}
+.stars{margin-top:auto;font-size:18px;letter-spacing:2px;color:var(--butter);-webkit-text-stroke:1px #c99a2a}
+.stars s{text-decoration:none;color:transparent;-webkit-text-stroke:1px var(--line)}
+.bigstars{font-size:46px;letter-spacing:6px}
+@media (prefers-reduced-motion:reduce){.pup[aria-pressed="true"]{transform:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="rail" hidden>
+    <button class="ib" id="b-menu" type="button" aria-label="Levels">Levels</button>
+    <div class="name" id="r-name"></div>
+    <div class="chip" id="r-cats"><i>Seated</i><span>0/0</span></div>
+    <div class="chip" id="r-time" hidden><i>Bell in</i><span>0</span></div>
+    <div class="chip" id="r-treats"><i>Treats</i><span>0/0</span></div>
+    <button class="ib" id="b-retry" type="button">Restart</button>
+    <button class="ib" id="b-sound" type="button" aria-pressed="true">Sound on</button>
+  </div>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="hint" class="off"></div>
+    <button id="bark" type="button" hidden><span>Bark<small id="barkkey">Space</small></span></button>
+
+    <div class="veil" id="v-pick">
+      <div class="card">
+        <a class="home" href="/">&larr; Maple's World</a>
+        <div class="eyebrow">The Purring Kettle cat cafe</div>
+        <h1>Cat Herding</h1>
+        <p>Customers have ordered a cat for their table, and a plate of treats for that cat. The cats have other plans. Pick a puppy, herd each cat to the right customer, and keep the others off the treats.</p>
+        <div class="pups" id="pups"></div>
+        <button class="go" id="b-start" type="button">Clock in</button>
+      </div>
+    </div>
+
+    <div class="veil" id="v-levels" hidden>
+      <div class="card">
+        <div class="eyebrow">Today's shifts</div>
+        <h2>Pick a shift</h2>
+        <div class="levels" id="levels"></div>
+        <div class="rowb" style="justify-content:flex-start">
+          <button class="go alt" id="b-pup" type="button">Change puppy</button>
+          <button class="go alt" id="b-back" type="button" hidden>Back to the floor</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="veil" id="v-done" hidden>
+      <div class="card small">
+        <div class="eyebrow" id="d-eyebrow">Shift complete</div>
+        <h2 id="d-title">Every cat in its place</h2>
+        <div class="stars bigstars" id="d-stars"></div>
+        <p id="d-text"></p>
+        <div class="rowb">
+          <button class="go alt" id="b-again" type="button">Play again</button>
+          <button class="go" id="b-next" type="button">Next shift</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2, PI = Math.PI;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > PI) d -= TAU; if (d < -PI) d += TAU; return d; };
+
+/* ---------- cast ---------- */
+const PUPS = {
+  collie: { name:'Pip',     breed:'Border collie',   say:'Born for this. Quick on the turn.',              speed:238, presence:1.0,  barkR:150, barkCd:2.2, r:15, stats:[5,3,3], body:'#2b2a33', head:'#2b2a33', blaze:'#fff', collar:'#fff', ear:'flop', tail:16, len:17, wid:10 },
+  corgi:  { name:'Biscuit', breed:'Corgi',           say:'Short legs, enormous voice. Barks often.',       speed:200, presence:0.9,  barkR:215, barkCd:1.3, r:14, stats:[3,2,5], body:'#e59a4c', head:'#e59a4c', blaze:'#fff', collar:'#fff', ear:'point', tail:3, len:16, wid:11 },
+  pyr:    { name:'Bear',    breed:'Great Pyrenees',  say:'Big, calm and fluffy. Cats notice from far off.', speed:172, presence:1.5,  barkR:185, barkCd:2.6, r:19, stats:[2,5,4], body:'#f6f1e6', head:'#fbf8f1', blaze:null,  collar:null, ear:'flop', tail:18, len:21, wid:14, fluffy:true, earCol:'#d9cdb8' },
+  dach:   { name:'Noodle',  breed:'Dachshund',       say:'Low and fast. Cats barely notice, so you can nudge.', speed:262, presence:0.66, barkR:120, barkCd:1.8, r:12, stats:[5,1,2], body:'#8a4f2b', head:'#8a4f2b', blaze:null, collar:'#e8577e', ear:'flop', tail:12, len:21, wid:8 },
+};
+const COATS = {
+  orange:  { name:'Marmalade', body:'#f29a4a', stripes:'#c96f24' },
+  black:   { name:'Inky',      body:'#33313c' },
+  white:   { name:'Mochi',     body:'#fbfaf6' },
+  gray:    { name:'Pebble',    body:'#9aa3ad', stripes:'#727b86' },
+  calico:  { name:'Patches',   body:'#fbfaf6', patches:[[-6,-3,6,'#f29a4a'],[3,4,5,'#33313c'],[-10,5,4,'#33313c']], head:'#f29a4a', ear:'#33313c' },
+  siamese: { name:'Miso',      body:'#efe3cf', head:'#efe3cf', mask:'#5b4337', ear:'#5b4337', tail:'#5b4337' },
+  tuxedo:  { name:'Domino',    body:'#33313c', chest:'#fbfaf6' },
+  tabby:   { name:'Waffle',    body:'#a9794c', stripes:'#6f4a2a' },
+};
+const TEMPER = {
+  mellow:   { fear:92,  flee:140, hungry:[8, 13], smell:330 },
+  skittish: { fear:138, flee:196, hungry:[10, 16], smell:300 },
+  bold:     { fear:58,  flee:130, hungry:[4, 7],  smell:9999 },
+  sleepy:   { fear:78,  flee:108, hungry:[12, 18], smell:280 },
+};
+
+/* ---------- shifts (drawn for an 800 x 500 floor; flipped on its side for tall screens) ---------- */
+// customer: table at x,y; a = direction from the table to the cushion; cat = index of the cat they ordered.
+const LEVELS = [
+  { name:'First customer', hint:'Walk toward Marmalade and she trots away from you. Steer her onto the pink cushion.', guide:true,
+    customers:[{ x:610, y:250, a:PI, cat:0 }], cats:[{ c:'orange', t:'mellow', x:240, y:250 }] },
+  { name:'Table for two', hint:'The bubble shows which cat each customer ordered. The plate beside them is for that cat only.',
+    customers:[{ x:610, y:140, a:PI, cat:1 }, { x:610, y:365, a:PI, cat:0 }],
+    cats:[{ c:'black', t:'mellow', x:180, y:140 }, { c:'white', t:'mellow', x:180, y:365 }], plants:[[390, 250]] },
+  { name:'Treat rush', guard:32, hint:'The treats are out before the cats are due. Keep every cat off the plates until the bell.',
+    customers:[{ x:190, y:140, a:0 }, { x:610, y:140, a:PI }, { x:400, y:385, a:-PI / 2 }],
+    cats:[{ c:'orange', t:'bold', x:400, y:120 }, { c:'gray', t:'mellow', x:120, y:400 }, { c:'tuxedo', t:'bold', x:660, y:300 }] },
+  { name:'Sunny spot', hint:'Cats fall asleep in sunbeams and will not budge. Bark to wake them.',
+    customers:[{ x:650, y:130, a:PI, cat:0 }, { x:650, y:365, a:PI, cat:1 }],
+    cats:[{ c:'gray', t:'sleepy', x:390, y:250 }, { c:'calico', t:'mellow', x:140, y:390 }], suns:[[290, 160, 200, 180]] },
+  { name:'Behind the counter', hint:'Cats run from you, so get behind them and push them where you want them to go.',
+    customers:[{ x:640, y:120, a:PI, cat:0 }, { x:640, y:320, a:PI, cat:1 }, { x:170, y:400, a:0, cat:2 }],
+    cats:[{ c:'siamese', t:'mellow', x:150, y:110 }, { c:'tuxedo', t:'skittish', x:230, y:230 }, { c:'tabby', t:'mellow', x:520, y:440 }, { c:'orange', t:'bold', x:300, y:440 }],
+    rects:[[380, 22, 36, 290, 'counter']] },
+  { name:'Lunch crowd', guard:42, hint:'Four plates, five cats. A bark scatters several at once.',
+    customers:[{ x:160, y:130, a:0 }, { x:640, y:130, a:PI }, { x:160, y:375, a:0 }, { x:540, y:385, a:PI }],
+    cats:[{ c:'black', t:'bold', x:400, y:80 }, { c:'white', t:'mellow', x:400, y:420 }, { c:'tabby', t:'bold', x:60, y:250 }, { c:'calico', t:'skittish', x:730, y:260 }, { c:'siamese', t:'mellow', x:330, y:160 }],
+    rects:[[340, 228, 120, 46, 'sofa']] },
+  { name:'Skittish Saturday', hint:'Nervous cats bolt from a long way off. Approach slowly, or use a quieter puppy.',
+    customers:[{ x:650, y:120, a:PI, cat:0 }, { x:620, y:330, a:PI, cat:1 }, { x:345, y:92, a:PI / 2, cat:2 }, { x:130, y:150, a:0, cat:3 }],
+    cats:[{ c:'black', t:'skittish', x:300, y:430 }, { c:'white', t:'sleepy', x:150, y:380 }, { c:'gray', t:'skittish', x:480, y:430 }, { c:'calico', t:'mellow', x:500, y:215 }],
+    suns:[[70, 310, 170, 140]], rects:[[350, 240, 96, 46, 'sofa']] },
+  { name:'Full house', hint:'Four orders and two strays who only came for the treats.',
+    customers:[{ x:130, y:115, a:0, cat:0 }, { x:670, y:115, a:PI, cat:1 }, { x:130, y:385, a:0, cat:2 }, { x:545, y:405, a:-PI / 2, cat:3 }],
+    cats:[{ c:'siamese', t:'skittish', x:400, y:300 }, { c:'tuxedo', t:'mellow', x:330, y:420 }, { c:'tabby', t:'sleepy', x:690, y:285 }, { c:'orange', t:'mellow', x:300, y:110 }, { c:'black', t:'bold', x:400, y:70 }, { c:'white', t:'bold', x:60, y:250 }],
+    suns:[[620, 225, 140, 110]], rects:[[300, 200, 200, 36, 'counter']], plants:[[420, 440]] },
+];
+const SKIN = ['#f3c9a5', '#c98d62', '#8d5a3b', '#f6d7b8', '#a86f47'], SHIRT = ['#5b8def', '#e8577e', '#f2b84b', '#7ac29a', '#9b7fe6'], HAIR = ['#3b2a20', '#1f1d24', '#b5651d', '#d8c27a', '#7b7b86'];
+
+/* ---------- saved progress (this browser only) ---------- */
+const save = { pup:'collie', stars:[], sound:true };
+try { Object.assign(save, JSON.parse(localStorage.getItem('cat-herding') || '{}')); } catch (e) {}
+const persist = () => { try { localStorage.setItem('cat-herding', JSON.stringify(save)); } catch (e) {} };
+if (!PUPS[save.pup]) save.pup = 'collie';
+
+/* ---------- sound: everything is synthesised, nothing to download ---------- */
+let AC = null;
+function audio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === 'suspended') AC.resume(); return AC; }
+function tone(type, f0, f1, dur, vol, delay = 0) {
+  if (!save.sound) return; const ac = audio(); if (!ac) return;
+  const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+const SFX = {
+  bark: p => { const k = p.r > 17 ? 0.6 : p.r < 13 ? 1.5 : 1; tone('sawtooth', 420 * k, 140 * k, 0.11, 0.22); tone('square', 380 * k, 120 * k, 0.1, 0.12, 0.13); },
+  meow: () => { tone('triangle', 620, 940, 0.14, 0.12); tone('triangle', 940, 520, 0.22, 0.12, 0.13); },
+  purr: () => { for (let i = 0; i < 6; i++) tone('sawtooth', 58, 50, 0.07, 0.1, i * 0.08); tone('sine', 660, 990, 0.25, 0.1, 0.1); },
+  nom:  () => { tone('square', 180, 90, 0.05, 0.1); tone('square', 160, 80, 0.05, 0.1, 0.09); },
+  lost: () => { tone('sine', 440, 220, 0.35, 0.14); },
+  win:  () => { [523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, f, 0.22, 0.14, i * 0.11)); },
+  bell: () => { tone('sine', 1320, 1320, 0.6, 0.16); tone('sine', 1760, 1760, 0.5, 0.08, 0.02); },
+};
+
+/* ---------- world state ---------- */
+const cv = $('c'), mainG = cv.getContext('2d'), stage = $('stage');
+let g = mainG;   // drawing helpers paint to `g`; the puppy previews borrow them by pointing it at their own canvas
+let W = 0, H = 0, DPR = 1, RW = 800, RH = 500, scale = 1, offX = 0, offY = 0;
+let S = null, mode = 'pick', tNow = 0, levelIdx = 0;
+const keys = {}, stick = { id:null, sx:0, sy:0, x:0, y:0 };
+const WALL = 22, CAT_R = 14;
+
+function buildLevel(i) {
+  const L = LEVELS[i], port = stage.clientHeight > stage.clientWidth * 1.05;
+  RW = port ? 500 : 800; RH = port ? 800 : 500;
+  const P = (x, y) => port ? { x:y, y:x } : { x, y }, A = a => port ? PI / 2 - a : a;
+  const breed = PUPS[save.pup];
+  const s = { i, L, port, t:0, guard:!!L.guard, timeLeft:L.guard || 0, lost:0, over:false, endT:0, fx:[], circles:[], rects:[], suns:[], plates:[], customers:[], cats:[],
+    pup:{ ...P(port ? 70 : 60, port ? 60 : 250), vx:0, vy:0, ang:0, breed, cd:0, step:0 } };
+  if (L.guard) Object.assign(s.pup, P(400, 315));
+  for (const r of L.rects || []) { const p = P(r[0], r[1]); s.rects.push({ x:p.x, y:p.y, w:port ? r[3] : r[2], h:port ? r[2] : r[3], kind:r[4] }); }
+  for (const r of L.suns || []) { const p = P(r[0], r[1]); s.suns.push({ x:p.x, y:p.y, w:port ? r[3] : r[2], h:port ? r[2] : r[3] }); }
+  for (const pl of L.plants || []) s.circles.push({ ...P(pl[0], pl[1]), r:17, kind:'plant' });
+  L.cats.forEach((c, n) => {
+    const T = TEMPER[c.t];
+    s.cats.push({ ...P(c.x, c.y), vx:0, vy:0, ang:rnd(0, TAU), coat:c.c, temper:c.t, T, state:'wander', tx:0, ty:0, wt:rnd(0, 2), hungryIn:rnd(T.hungry[0], T.hungry[1]) * (L.guard ? 0.45 : 1),
+      lure:null, eatT:0, startled:0, cornerT:0, dashT:0, dashA:0, sunT:0, owner:null, seed:rnd(0, 99), n });
+  });
+  L.customers.forEach((c, n) => {
+    const t = P(c.x, c.y), a = A(c.a), flip = port ? -1 : 1;
+    const at = (ang, d) => ({ x:t.x + Math.cos(ang) * d, y:t.y + Math.sin(ang) * d });
+    const cu = { n, x:t.x, y:t.y, a, cush:at(a, 62), human:at(a + PI, 44), mood:'wait', moodT:0, skin:SKIN[(n + i) % 5], shirt:SHIRT[(n * 2 + i) % 5], hair:HAIR[(n + i * 2) % 5], cat:null };
+    cu.plate = { ...at(a + flip * PI / 2, 56), left:1, gone:false, safe:false, owner:cu };
+    if (c.cat != null) { cu.cat = s.cats[c.cat]; cu.cat.owner = cu; }
+    s.customers.push(cu); s.plates.push(cu.plate);
+    s.circles.push({ x:t.x, y:t.y, r:28, kind:'table' }, { x:cu.human.x, y:cu.human.y, r:14, kind:'human' });
+  });
+  return s;
+}
+
+function startLevel(i) {
+  levelIdx = i; S = buildLevel(i); mode = 'play';
+  for (const v of ['v-pick', 'v-levels', 'v-done']) $(v).hidden = true;
+  $('rail').hidden = false; $('bark').hidden = false;
+  $('r-name').textContent = (i + 1) + '. ' + S.L.name;
+  $('r-cats').hidden = S.guard; $('r-time').hidden = !S.guard;
+  const h = $('hint'); h.textContent = S.L.hint; h.classList.remove('off'); clearTimeout(startLevel.t); startLevel.t = setTimeout(() => h.classList.add('off'), 7000);
+  resize(); hud(true); cv.focus();
+}
+
+/* ---------- simulation ---------- */
+function pushOut(o, r) {
+  o.x = clamp(o.x, WALL + r, RW - WALL - r); o.y = clamp(o.y, WALL + r, RH - WALL - r);
+  for (const c of S.circles) { const dx = o.x - c.x, dy = o.y - c.y, d = Math.hypot(dx, dy), m = c.r + r; if (d < m && d > 0.001) { o.x = c.x + dx / d * m; o.y = c.y + dy / d * m; } }
+  for (const q of S.rects) {
+    const nx = clamp(o.x, q.x, q.x + q.w), ny = clamp(o.y, q.y, q.y + q.h), dx = o.x - nx, dy = o.y - ny, d = Math.hypot(dx, dy);
+    if (d < r && d > 0.001) { o.x = nx + dx / d * r; o.y = ny + dy / d * r; }
+    else if (d <= 0.001) { // centre is inside the box: leave by the nearest side
+      const l = o.x - q.x, rr = q.x + q.w - o.x, t = o.y - q.y, b = q.y + q.h - o.y, m = Math.min(l, rr, t, b);
+      if (m === l) o.x = q.x - r; else if (m === rr) o.x = q.x + q.w + r; else if (m === t) o.y = q.y - r; else o.y = q.y + q.h + r;
+    }
+  }
+}
+const inSun = c => S.suns.some(q => c.x > q.x && c.x < q.x + q.w && c.y > q.y && c.y < q.y + q.h);
+function fx(kind, x, y, extra) { S.fx.push({ kind, x, y, t:0, ...extra }); }
+
+function bark() {
+  if (mode !== 'play' || !S || S.over) return; const p = S.pup; if (p.cd > 0) return;
+  p.cd = p.breed.barkCd; SFX.bark(p.breed); fx('ring', p.x, p.y, { r:p.breed.barkR });
+  for (const c of S.cats) if (c.state !== 'seated' && dist(c, p) < p.breed.barkR) { c.startled = 1.1; if (c.state === 'nap') fx('pop', c.x, c.y - 18, { text:'!' }); c.state = 'wander'; c.sunT = -2.5; }
+}
+
+function updatePup(dt) {
+  const p = S.pup, b = p.breed;
+  let ix = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0) + stick.x;
+  let iy = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0) + stick.y;
+  const il = Math.hypot(ix, iy); if (il > 1) { ix /= il; iy /= il; }
+  const k = Math.min(1, dt * 9);
+  p.vx += (ix * b.speed - p.vx) * k; p.vy += (iy * b.speed - p.vy) * k;
+  p.x += p.vx * dt; p.y += p.vy * dt; pushOut(p, b.r * 0.8);
+  const sp = Math.hypot(p.vx, p.vy); if (sp > 12) { p.ang += angDiff(p.ang, Math.atan2(p.vy, p.vx)) * Math.min(1, dt * 12); p.step += sp * dt; }
+  p.cd = Math.max(0, p.cd - dt);
+}
+
+function updateCat(c, dt) {
+  const p = S.pup, T = c.T;
+  if (c.state === 'seated') { const q = c.owner.cush; c.x += (q.x - c.x) * Math.min(1, dt * 6); c.y += (q.y - c.y) * Math.min(1, dt * 6); c.ang += angDiff(c.ang, c.owner.a + PI) * Math.min(1, dt * 4); return; }
+  c.startled = Math.max(0, c.startled - dt);
+  const sunny = inSun(c);
+  if (c.state === 'nap') { c.vx = c.vy = 0; return; }
+  if (sunny) { c.sunT += dt; if (c.sunT > 1.1 && c.startled <= 0) { c.state = 'nap'; c.lure = null; fx('pop', c.x, c.y - 18, { text:'z' }); return; } } else c.sunT = Math.min(0, c.sunT + dt);
+
+  const dx = c.x - p.x, dy = c.y - p.y, d = Math.hypot(dx, dy) || 1, fearR = T.fear * p.breed.presence + p.breed.r;
+  const scared = d < fearR || c.startled > 0;
+  let wx = 0, wy = 0, speed = 0;
+  if (c.dashT > 0) { c.dashT -= dt; wx = Math.cos(c.dashA); wy = Math.sin(c.dashA); speed = T.flee * 1.9; }
+  else if (scared) {
+    if (c.lure || c.state === 'eat') { c.lure = null; c.eatT = 0; c.state = 'wander'; c.hungryIn = rnd(3, 5); }
+    c.hungryIn = Math.max(c.hungryIn, 2);
+    const str = c.startled > 0 ? 1.3 : clamp(1.7 - 1.6 * d / fearR, 0.4, 1.6);   // slow drift at the edge, a real sprint when the dog is on top of her
+    wx = dx / d; wy = dy / d;
+    if (c.temper === 'skittish') { const z = Math.sin(S.t * 9 + c.seed) * 0.55; wx += -dy / d * z; wy += dx / d * z; }
+    // walls push back so a fleeing cat slides along them instead of sticking
+    const m = 52; if (c.x < WALL + m) wx += (WALL + m - c.x) / m; if (c.x > RW - WALL - m) wx -= (c.x - (RW - WALL - m)) / m;
+    if (c.y < WALL + m) wy += (WALL + m - c.y) / m; if (c.y > RH - WALL - m) wy -= (c.y - (RH - WALL - m)) / m;
+    // a cat who can see her own human runs that way if it is roughly away from the dog
+    if (c.owner) { const q = c.owner.cush, qd = dist(c, q); if (qd < 120) { wx += (q.x - c.x) / qd * 0.8; wy += (q.y - c.y) / qd * 0.8; } }
+    speed = T.flee * str * (sunny ? 0.6 : 1);
+    // cornered: bolt sideways past the dog
+    if (Math.hypot(c.vx, c.vy) < 22 && d < fearR * 0.8) { c.cornerT += dt; if (c.cornerT > 0.55) { c.cornerT = 0; c.dashT = 0.42; const side = Math.atan2(RH / 2 - c.y, RW / 2 - c.x); c.dashA = side + rnd(-0.5, 0.5); fx('pop', c.x, c.y - 18, { text:'!' }); } } else c.cornerT = 0;
+  } else {
+    c.cornerT = 0;
+    const q = c.owner && c.owner.cush;
+    if (q && dist(c, q) < 105) { wx = q.x - c.x; wy = q.y - c.y; speed = 62; }
+    else if (c.lure) {
+      const pl = c.lure; if (pl.gone || pl.safe) { c.lure = null; c.state = 'wander'; c.eatT = 0; }
+      else {
+        const pd = dist(c, pl);
+        if (pd < 15) { if (c.state !== 'eat') { c.state = 'eat'; SFX.nom(); } c.eatT += dt; pl.left = Math.min(pl.left, 1 - c.eatT / 2); if (Math.random() < dt * 3) SFX.nom();
+          if (pl.left <= 0) { pl.gone = true; pl.left = 0; S.lost++; pl.owner.mood = 'sad'; pl.owner.moodT = 0; SFX.lost(); fx('pop', pl.x, pl.y - 16, { text:'gone' }); c.lure = null; c.state = 'wander'; c.eatT = 0; c.hungryIn = rnd(T.hungry[0], T.hungry[1]); } }
+        else { wx = pl.x - c.x; wy = pl.y - c.y; speed = c.temper === 'bold' ? 92 : 68; }
+      }
+    } else {
+      c.hungryIn -= dt;
+      if (c.hungryIn <= 0) {
+        let best = null, bd = T.smell;
+        for (const pl of S.plates) if (!pl.gone && !pl.safe && pl.owner !== c.owner) { const pd = dist(c, pl); if (pd < bd) { bd = pd; best = pl; } }
+        if (best) { c.lure = best; SFX.meow(); } else c.hungryIn = 3;
+      }
+      c.wt -= dt; if (c.wt <= 0) { c.wt = rnd(1.5, 4); const sit = Math.random() < 0.35; c.tx = sit ? c.x : clamp(c.x + rnd(-130, 130), 50, RW - 50); c.ty = sit ? c.y : clamp(c.y + rnd(-130, 130), 50, RH - 50); }
+      const td = Math.hypot(c.tx - c.x, c.ty - c.y); if (td > 6) { wx = c.tx - c.x; wy = c.ty - c.y; speed = 36; }
+    }
+  }
+  const wl = Math.hypot(wx, wy); if (wl > 0.001) { wx = wx / wl * speed; wy = wy / wl * speed; } else wx = wy = 0;
+  const k = Math.min(1, dt * 6); c.vx += (wx - c.vx) * k; c.vy += (wy - c.vy) * k;
+  c.x += c.vx * dt; c.y += c.vy * dt;
+  { const m = p.breed.r + 9; if (d < m) { c.x = p.x + dx / d * m; c.y = p.y + dy / d * m; } }   // the dog shoulders cats aside rather than walking through them
+  pushOut(c, CAT_R * 0.85);
+  for (const o of S.cats) if (o !== c && o.state !== 'seated') { const ox = c.x - o.x, oy = c.y - o.y, od = Math.hypot(ox, oy); if (od < 22 && od > 0.01) { c.x += ox / od * (22 - od) * 0.5; c.y += oy / od * (22 - od) * 0.5; } }
+  if (Math.hypot(c.vx, c.vy) > 8) c.ang += angDiff(c.ang, Math.atan2(c.vy, c.vx)) * Math.min(1, dt * 10);
+  else if (c.state === 'eat' && c.lure) c.ang += angDiff(c.ang, Math.atan2(c.lure.y - c.y, c.lure.x - c.x)) * Math.min(1, dt * 8);
+
+  if (c.owner && dist(c, c.owner.cush) < 24) { // home
+    c.state = 'seated'; c.lure = null; const cu = c.owner; cu.mood = cu.plate.gone ? 'ok' : 'happy'; cu.moodT = 0; cu.plate.safe = true; SFX.purr();
+    for (let i = 0; i < 5; i++) fx('heart', cu.cush.x + rnd(-14, 14), cu.cush.y + rnd(-10, 10), { d:i * 0.08 });
+  }
+}
+
+function update(dt) {
+  tNow += dt; if (mode !== 'play' || !S) return;
+  S.t += dt;
+  if (!S.over) {
+    updatePup(dt); for (const c of S.cats) updateCat(c, dt);
+    if (S.guard) {
+      S.timeLeft -= dt;
+      if (S.plates.every(p => p.gone)) finish(false);
+      else if (S.timeLeft <= 0) { S.timeLeft = 0; SFX.bell(); finish(true); }
+    } else if (S.customers.every(c => c.cat && c.cat.state === 'seated')) finish(true);
+  } else { for (const c of S.cats) if (c.state === 'seated') updateCat(c, dt); S.endT += dt; if (S.endT > 1.1 && $('v-done').hidden) showDone(); }
+  for (const cu of S.customers) cu.moodT += dt;
+  for (const f of S.fx) f.t += dt; S.fx = S.fx.filter(f => f.t < (f.kind === 'ring' ? 0.45 : 1.2 + (f.d || 0)));
+  hud();
+}
+function finish(ok) {
+  if (S.over) return; S.over = true; S.ok = ok;
+  S.stars = !ok ? 0 : S.lost === 0 ? 3 : S.lost === 1 ? 2 : 1;
+  if (ok) { SFX.win(); save.stars[S.i] = Math.max(save.stars[S.i] || 0, S.stars); persist(); }
+}
+const starHTML = n => '★'.repeat(n) + '<s>' + '★'.repeat(3 - n) + '</s>';
+function showDone() {
+  const last = S.i === LEVELS.length - 1, total = S.plates.length, kept = total - S.lost;
+  $('d-eyebrow').textContent = S.ok ? 'Shift complete' : 'The plates are empty';
+  $('d-title').textContent = !S.ok ? 'The cats ate everything' : S.guard ? 'The bell rang in time' : S.stars === 3 ? 'Every cat in its place' : 'Everyone is seated';
+  $('d-stars').innerHTML = starHTML(S.stars); $('d-stars').hidden = !S.ok;
+  $('d-text').textContent = !S.ok ? 'Stay close to the plates and save your bark for when two cats come at once.'
+    : kept === total ? 'All ' + total + (total === 1 ? ' plate' : ' plates') + ' of treats untouched. ' + S.pup.breed.name + ' earned a biscuit.'
+    : kept + ' of ' + total + ' plates survived. Keep every plate safe for three stars.';
+  $('b-next').hidden = !S.ok; $('b-next').textContent = last ? 'All shifts' : 'Next shift';
+  $('v-done').hidden = false; $('bark').hidden = true; (S.ok ? $('b-next') : $('b-again')).focus();
+}
+
+let hudKey = '';
+function hud(force) {
+  const seated = S.customers.filter(c => c.cat && c.cat.state === 'seated').length, orders = S.customers.filter(c => c.cat).length;
+  const key = seated + '|' + S.lost + '|' + Math.ceil(S.timeLeft);
+  if (key !== hudKey || force) {
+    hudKey = key;
+    $('r-cats').lastChild.textContent = seated + '/' + orders;
+    $('r-treats').lastChild.textContent = (S.plates.length - S.lost) + '/' + S.plates.length;
+    $('r-time').lastChild.textContent = Math.ceil(S.timeLeft) + 's';
+  }
+  $('bark').style.setProperty('--p', (1 - S.pup.cd / S.pup.breed.barkCd).toFixed(3));
+}
+
+/* ---------- drawing ---------- */
+const OUT = 'rgba(50,35,30,.38)';
+function shape(fill, stroke = OUT) { g.fillStyle = fill; g.fill(); if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1.2; g.stroke(); } }
+function ell(x, y, rx, ry, rot = 0) { g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, TAU); }
+function drawCat(coat, t, pose) { // faces +x; origin at body centre
+  const C = COATS[coat], nap = pose === 'nap', sit = pose === 'sit' || nap;
+  g.lineCap = 'round'; g.strokeStyle = OUT; g.lineWidth = 6.5; g.beginPath(); const w = nap ? 0 : Math.sin(t * (pose === 'run' ? 9 : 3.5)) * 6;
+  if (sit) { g.moveTo(-11, 2); g.quadraticCurveTo(-17, 13, -3, 13); } else { g.moveTo(-12, 0); g.quadraticCurveTo(-21, w, -26, w * 1.5 - 2); }
+  g.stroke(); g.strokeStyle = C.tail || C.body; g.lineWidth = 4.5; g.stroke();
+  ell(0, 0, sit ? 12.5 : 14.5, sit ? 11 : 9.5); shape(C.body);
+  if (C.stripes) { g.strokeStyle = C.stripes; g.lineWidth = 2; for (const x of [-7, -2, 3]) { g.beginPath(); g.moveTo(x, -6.5); g.quadraticCurveTo(x + 1.5, 0, x, 6.5); g.stroke(); } }
+  if (C.patches) for (const q of C.patches) { ell(q[0], q[1], q[2], q[2] * 0.8); shape(q[3], null); }
+  if (C.chest) { ell(7, 0, 5.5, 6.5); shape(C.chest, null); }
+  const hx = sit ? 10.5 : 13;
+  g.beginPath(); g.moveTo(hx - 3, -6); g.lineTo(hx + 1, -13); g.lineTo(hx + 5.5, -5.5); g.closePath(); shape(C.ear || C.head || C.body);
+  g.beginPath(); g.moveTo(hx - 3, 6); g.lineTo(hx + 1, 13); g.lineTo(hx + 5.5, 5.5); g.closePath(); shape(C.ear || C.head || C.body);
+  ell(hx, 0, 8.2, 8.2); shape(C.head || C.body);
+  if (C.mask) { ell(hx + 2.5, 0, 5, 5.5); shape(C.mask, null); }
+  if (C.chest) { ell(hx + 4, 0, 3.6, 4.2); shape(C.chest, null); }
+  g.fillStyle = '#f4a3b5'; ell(hx + 7.6, 0, 1.4, 1.7); g.fill();
+  const eye = coat === 'black' || coat === 'tuxedo' || C.mask ? '#ffe27a' : '#2b2a33';
+  if (nap) { g.strokeStyle = eye; g.lineWidth = 1.3; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(hx + 2.5, s * 2.4); g.lineTo(hx + 2.5, s * 5.2); g.stroke(); } }
+  else { g.fillStyle = eye; ell(hx + 3, -3.7, 1.5, 1.9); g.fill(); ell(hx + 3, 3.7, 1.5, 1.9); g.fill(); }
+}
+function drawPup(b, t, moving) {
+  const wag = Math.sin(t * (moving ? 16 : 7)) * 0.5, L = b.len, Wd = b.wid;
+  g.lineCap = 'round';
+  if (b.tail > 4) { g.save(); g.translate(-L + 3, 0); g.rotate(wag); g.strokeStyle = OUT; g.lineWidth = b.fluffy ? 9.5 : 6; g.beginPath(); g.moveTo(0, 0); g.lineTo(-b.tail, 0); g.stroke(); g.strokeStyle = b.body; g.lineWidth = b.fluffy ? 8 : 4.5; g.stroke(); g.restore(); }
+  const bob = moving ? Math.sin(t * 18) * 1.6 : 0;   // paws
+  for (const [px, s] of [[L * 0.45, 1], [L * 0.45, -1], [-L * 0.5, 1], [-L * 0.5, -1]]) { ell(px + bob * s, s * (Wd - 1), 4.2, 3.4); shape(b.blaze || b.body); }
+  if (b.fluffy) { g.beginPath(); for (let i = 0; i <= 20; i++) { const a = i / 20 * TAU, r = 1 + 0.07 * Math.sin(a * 9); g.lineTo(Math.cos(a) * L * r, Math.sin(a) * Wd * r); } g.closePath(); } else ell(0, 0, L, Wd);
+  shape(b.body);
+  if (b.collar) { g.strokeStyle = b.collar; g.lineWidth = 3.4; g.beginPath(); g.moveTo(L * 0.55, -Wd * 0.8); g.quadraticCurveTo(L * 0.72, 0, L * 0.55, Wd * 0.8); g.stroke(); }
+  const hx = L * 0.92, hr = Wd * 0.86;
+  for (const s of [-1, 1]) { g.beginPath(); if (b.ear === 'point') { g.moveTo(hx - 4, s * hr * 0.5); g.lineTo(hx - 2, s * (hr + 9)); g.lineTo(hx + 4, s * hr * 0.7); } else g.ellipse(hx - 3, s * (hr + 1), 6.5, 4, s * 0.5, 0, TAU); g.closePath(); shape(b.earCol || (b.ear === 'point' ? b.body : shade(b.body))); }
+  ell(hx, 0, hr, hr); shape(b.head);
+  ell(hx + hr * 0.8, 0, hr * 0.55, hr * 0.48); shape(b.blaze || b.head);
+  if (b.blaze) { g.fillStyle = b.blaze; g.beginPath(); g.moveTo(hx + hr * 0.5, -2); g.lineTo(hx - hr * 0.6, 0); g.lineTo(hx + hr * 0.5, 2); g.fill(); }
+  g.fillStyle = '#1f1d24'; ell(hx + hr * 1.25, 0, 2.3, 2.6); g.fill();
+  ell(hx + hr * 0.25, -hr * 0.45, 1.6, 1.9); g.fill(); ell(hx + hr * 0.25, hr * 0.45, 1.6, 1.9); g.fill();
+}
+function shade(hex) { const n = parseInt(hex.slice(1), 16); return 'rgb(' + [n >> 16, n >> 8 & 255, n & 255].map(v => Math.round(v * 0.72)).join(',') + ')'; }
+function treat(x, y, s, a) { g.save(); g.translate(x, y); g.rotate(a); g.scale(s, s); g.beginPath(); g.moveTo(-5, 0); g.quadraticCurveTo(0, -4.5, 5, 0); g.quadraticCurveTo(0, 4.5, -5, 0); g.moveTo(-4, 0); g.lineTo(-8, -3.2); g.lineTo(-8, 3.2); g.closePath(); shape('#f2a65a'); g.restore(); }
+function bubble(x, y, w, h) { g.beginPath(); g.roundRect(x - w / 2, y - h, w, h, 10); g.moveTo(x - 5, y - 1); g.lineTo(x, y + 7); g.lineTo(x + 5, y - 1); shape('#fffaf2', 'rgba(50,35,30,.25)'); }
+function heart(x, y, s, col) { g.save(); g.translate(x, y); g.scale(s, s); g.beginPath(); g.moveTo(0, 3); g.bezierCurveTo(-8, -3, -4, -9, 0, -4.5); g.bezierCurveTo(4, -9, 8, -3, 0, 3); g.fillStyle = col; g.fill(); g.restore(); }
+
+function draw() {
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.fillStyle = '#24484a'; g.fillRect(0, 0, W, H);
+  if (!S) return;
+  g.setTransform(DPR * scale, 0, 0, DPR * scale, DPR * offX, DPR * offY);
+  // walls and tiles
+  g.beginPath(); g.roundRect(0, 0, RW, RH, 14); g.fillStyle = '#2f5d57'; g.fill();
+  g.save(); g.beginPath(); g.rect(WALL, WALL, RW - WALL * 2, RH - WALL * 2); g.clip();
+  for (let y = 0, r = 0; y < RH; y += 46, r++) for (let x = 0, q = 0; x < RW; x += 46, q++) { g.fillStyle = (r + q) % 2 ? '#d7ebe0' : '#eaf4ee'; g.fillRect(WALL + x, WALL + y, 46, 46); }
+  for (const q of S.suns) { const gr = g.createLinearGradient(q.x, q.y, q.x + q.w, q.y + q.h); gr.addColorStop(0, 'rgba(255,214,102,.62)'); gr.addColorStop(1, 'rgba(255,236,170,.34)'); g.fillStyle = gr; g.beginPath(); g.roundRect(q.x, q.y, q.w, q.h, 8); g.fill(); g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 3; for (let k = 1; k < 3; k++) { g.beginPath(); g.moveTo(q.x + q.w * k / 3, q.y); g.lineTo(q.x + q.w * k / 3, q.y + q.h); g.stroke(); } }
+  g.restore();
+  g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 3; g.strokeRect(WALL, WALL, RW - WALL * 2, RH - WALL * 2);
+
+  for (const q of S.rects) {
+    g.beginPath(); g.roundRect(q.x, q.y, q.w, q.h, q.kind === 'sofa' ? 12 : 5); shape(q.kind === 'sofa' ? '#9b7fe6' : '#7a5236');
+    if (q.kind === 'sofa') { g.beginPath(); g.roundRect(q.x + 5, q.y + 5, q.w - 10, q.h - 10, 8); shape('#b6a0f0', null); }
+    else { g.beginPath(); g.roundRect(q.x + 4, q.y + 4, q.w - 8, q.h - 8, 3); shape('#a97c56', null); const n = Math.floor(Math.max(q.w, q.h) / 70); for (let k = 0; k < n; k++) { const f = (k + 0.5) / n, mx = q.w > q.h ? q.x + q.w * f : q.x + q.w / 2, my = q.w > q.h ? q.y + q.h / 2 : q.y + q.h * f; ell(mx, my, 8, 8); shape('#fffaf2'); ell(mx, my, 5, 5); shape(k % 2 ? '#6b4226' : '#d9b08c', null); } }
+  }
+  // the guide line on the first shift
+  if (S.L.guide && !S.over) { const c = S.cats[0], q = c.owner.cush; if (c.state !== 'seated') { g.setLineDash([6, 8]); g.lineDashOffset = -S.t * 30; g.strokeStyle = 'rgba(232,87,126,.7)'; g.lineWidth = 3; g.beginPath(); g.moveTo(c.x, c.y); g.lineTo(q.x, q.y); g.stroke(); g.setLineDash([]); } }
+
+  for (const cu of S.customers) {
+    if (cu.cat) { const q = cu.cush, seated = cu.cat.state === 'seated', pulse = seated ? 0 : Math.sin(S.t * 3 + cu.n) * 1.5;
+      ell(q.x, q.y, 21 + pulse, 21 + pulse); shape(seated ? '#f7a8bd' : '#e8577e'); ell(q.x, q.y, 15, 15); shape('#f7a8bd', null);
+      if (!seated) { g.save(); g.translate(q.x, q.y); g.globalAlpha = 0.38; g.scale(0.78, 0.78); drawCat(cu.cat.coat, 0, 'sit'); g.restore(); } }
+    const pl = cu.plate; ell(pl.x, pl.y, 13, 13); shape('#ffffff'); ell(pl.x, pl.y, 9, 9); shape('#eef3f6', 'rgba(50,35,30,.15)');
+    if (pl.gone) { g.fillStyle = '#c98d62'; for (let k = 0; k < 4; k++) { ell(pl.x + Math.cos(k * 1.9) * 5, pl.y + Math.sin(k * 2.7) * 5, 1.2, 1.2); g.fill(); } }
+    else { const n = Math.ceil(pl.left * 3); for (let k = 0; k < n; k++) treat(pl.x + Math.cos(k * 2.1 + 0.5) * 4, pl.y + Math.sin(k * 2.1 + 0.5) * 4, 0.72, k * 1.3); }
+    if (pl.safe && !pl.gone) { g.strokeStyle = '#3aa76d'; g.lineWidth = 2.5; g.beginPath(); g.arc(pl.x, pl.y, 16, 0, TAU); g.stroke(); }
+  }
+  for (const c of S.circles) if (c.kind === 'plant') { ell(c.x, c.y, 15, 15); shape('#b5653a'); g.fillStyle = '#3f9b5f'; for (let k = 0; k < 7; k++) { g.save(); g.translate(c.x, c.y); g.rotate(k / 7 * TAU + 0.3); ell(11, 0, 11, 5); shape('#3f9b5f'); g.restore(); } }
+
+  // animals, back to front
+  const movers = S.cats.map(c => ({ y:c.y, c })).concat([{ y:S.pup.y, p:S.pup }]).sort((a, b) => a.y - b.y);
+  for (const m of movers) {
+    if (m.p) { const p = m.p, mv = Math.hypot(p.vx, p.vy) > 20; g.save(); g.translate(p.x, p.y); g.fillStyle = 'rgba(0,0,0,.14)'; ell(0, 4, p.breed.len + 2, p.breed.wid); g.fill(); g.rotate(p.ang); drawPup(p.breed, tNow, mv); g.restore(); continue; }
+    const c = m.c, sp = Math.hypot(c.vx, c.vy), pose = c.state === 'nap' ? 'nap' : c.state === 'seated' || c.state === 'eat' ? 'sit' : sp > 90 ? 'run' : sp < 6 ? 'sit' : 'walk';
+    g.save(); g.translate(c.x, c.y); g.fillStyle = 'rgba(0,0,0,.13)'; ell(0, 3, 15, 10); g.fill(); g.rotate(c.ang); drawCat(c.coat, tNow + c.seed, pose); g.restore();
+    if (c.state === 'nap') { g.fillStyle = '#5b6b8a'; g.font = '700 13px Fredoka, sans-serif'; g.textAlign = 'center'; const f = (S.t + c.seed) % 1.6; g.globalAlpha = 1 - f / 1.6; g.fillText('z', c.x + 12 + f * 6, c.y - 14 - f * 12); g.globalAlpha = 1; }
+    else if (c.lure && c.state !== 'eat') { bubble(c.x, c.y - 22, 26, 20); treat(c.x + 1.5, c.y - 32, 0.85, 0); }
+  }
+  // tables, people and their orders sit above the floor
+  for (const cu of S.customers) {
+    g.save(); g.translate(cu.human.x, cu.human.y); g.rotate(cu.a); ell(0, 0, 11, 19); shape(cu.shirt); ell(2, 0, 9.5, 9.5); shape(cu.skin); g.beginPath(); g.arc(2, 0, 9.5, PI * 0.5, PI * 1.5); g.closePath(); shape(cu.hair, null); g.restore();
+    ell(cu.x, cu.y, 28, 28); shape('#c9976b'); ell(cu.x, cu.y, 23, 23); shape('#dab186', null);
+    ell(cu.x + 8, cu.y - 6, 6.5, 6.5); shape('#ffffff'); ell(cu.x + 8, cu.y - 6, 4.3, 4.3); shape('#8a5a3c', null);
+    const bx = cu.human.x, by = cu.human.y - 24, pop = cu.moodT < 0.3 ? 1 + (0.3 - cu.moodT) : 1;
+    g.save(); g.translate(bx, by); g.scale(pop, pop); g.translate(-bx, -by);
+    if (cu.mood === 'happy' || cu.mood === 'ok') { bubble(bx, by, 30, 26); heart(bx, by - 10, 1.05, cu.mood === 'happy' ? '#e8577e' : '#f2b84b'); }
+    else if (cu.mood === 'sad') { bubble(bx, by, 30, 26); g.fillStyle = '#5b8def'; g.beginPath(); g.moveTo(bx, by - 21); g.quadraticCurveTo(bx + 7, by - 9, bx, by - 6); g.quadraticCurveTo(bx - 7, by - 9, bx, by - 21); g.fill(); }
+    else if (cu.cat) { bubble(bx, by, 46, 32); g.save(); g.translate(bx - 3, by - 16); g.scale(0.82, 0.82); drawCat(cu.cat.coat, 0, 'walk'); g.restore(); }
+    else { bubble(bx, by, 30, 24); treat(bx + 1.5, by - 12, 1, 0); }
+    g.restore();
+  }
+  for (const f of S.fx) {
+    if (f.kind === 'ring') { const k = f.t / 0.45; g.strokeStyle = 'rgba(255,209,102,' + (1 - k) + ')'; g.lineWidth = 5 * (1 - k) + 1; g.beginPath(); g.arc(f.x, f.y, f.r * (0.25 + 0.75 * k), 0, TAU); g.stroke(); }
+    else if (f.kind === 'heart') { const t = f.t - f.d; if (t > 0) { g.globalAlpha = clamp(1.2 - t, 0, 1); heart(f.x, f.y - t * 34, 0.9, '#e8577e'); g.globalAlpha = 1; } }
+    else { g.globalAlpha = clamp(1.2 - f.t, 0, 1); g.font = '700 15px Fredoka, sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = '#fffaf2'; g.strokeText(f.text, f.x, f.y - f.t * 22); g.fillStyle = f.text === 'gone' ? '#c0392b' : '#2b2a33'; g.fillText(f.text, f.x, f.y - f.t * 22); g.globalAlpha = 1; }
+  }
+  // the dog's presence, faintly, so players can see why cats react
+  if (!S.over) { const p = S.pup; g.strokeStyle = 'rgba(47,93,87,.16)'; g.lineWidth = 2; g.setLineDash([4, 7]); g.beginPath(); g.arc(p.x, p.y, 92 * p.breed.presence + p.breed.r, 0, TAU); g.stroke(); g.setLineDash([]); }
+  if (stick.id !== null) { g.setTransform(DPR, 0, 0, DPR, 0, 0); g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 2; g.beginPath(); g.arc(stick.sx, stick.sy, 44, 0, TAU); g.stroke(); g.fillStyle = 'rgba(255,209,102,.8)'; g.beginPath(); g.arc(stick.sx + stick.x * 44, stick.sy + stick.y * 44, 17, 0, TAU); g.fill(); }
+}
+
+/* ---------- menus ---------- */
+const previews = [];
+function buildPick() {
+  const box = $('pups'); box.innerHTML = ''; previews.length = 0;
+  for (const id in PUPS) {
+    const b = PUPS[id], el = document.createElement('button'); el.type = 'button'; el.className = 'pup'; el.id = 'pup-' + id; el.setAttribute('aria-pressed', String(save.pup === id));
+    el.innerHTML = '<canvas width="300" height="168"></canvas><b>' + b.name + '</b><em>' + b.breed + '</em><span>' + b.say + '</span>' +
+      ['Speed', 'Presence', 'Bark'].map((n, k) => '<div class="stat">' + n + '<u style="--v:' + b.stats[k] + '"></u></div>').join('');
+    el.addEventListener('click', () => { save.pup = id; persist(); audio(); SFX.bark(b); for (const o of box.children) o.setAttribute('aria-pressed', String(o === el)); });
+    box.appendChild(el); previews.push({ ctx:el.querySelector('canvas').getContext('2d'), b });
+  }
+}
+function drawPreviews() {
+  if ($('v-pick').hidden) return;
+  for (const pv of previews) { const c = pv.ctx; c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 300, 168); c.setTransform(3.4, 0, 0, 3.4, 150 - 12, 84); c.rotate(-0.25 + Math.sin(tNow * 1.5) * 0.08); g = c; drawPup(pv.b, tNow, false); g = mainG; }
+}
+function buildLevels() {
+  const box = $('levels'); box.innerHTML = ''; const open = save.stars.filter(Boolean).length;
+  LEVELS.forEach((L, i) => { const el = document.createElement('button'); el.type = 'button'; el.className = 'lv'; el.id = 'lv-' + (i + 1); el.disabled = i > open;
+    el.innerHTML = '<small>' + (L.guard ? 'Guard the treats' : 'Seat the cats') + '</small><b>' + (i + 1) + '. ' + L.name + '</b><div class="stars">' + starHTML(save.stars[i] || 0) + '</div>';
+    el.addEventListener('click', () => startLevel(i)); box.appendChild(el); });
+}
+function showLevels(fromPlay) { buildLevels(); $('v-levels').hidden = false; $('v-pick').hidden = true; $('v-done').hidden = true; $('b-back').hidden = !(fromPlay && S && !S.over); if (mode === 'play') mode = 'paused'; $('bark').hidden = true; }
+
+/* ---------- loop & input ---------- */
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1); W = stage.clientWidth; H = stage.clientHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  scale = Math.min(W / RW, H / RH); offX = (W - RW * scale) / 2; offY = (H - RH * scale) / 2;
+}
+let last = 0;
+function frame(ts) { const dt = Math.min(0.033, (ts - last) / 1000 || 0); last = ts; update(dt); draw(); drawPreviews(); requestAnimationFrame(frame); }
+
+addEventListener('resize', resize);
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase(); if (e.target instanceof HTMLButtonElement && (k === ' ' || k === 'enter') && mode !== 'play') return;
+  if (mode === 'play' && [' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
+  keys[k] = true; if (k === ' ' && !e.repeat) bark();
+  if (k === 'escape' && (mode === 'play' || mode === 'paused')) { if (mode === 'play') showLevels(true); else $('b-back').click(); }
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+cv.addEventListener('pointerdown', e => { audio(); if (e.pointerType === 'mouse' || stick.id !== null || mode !== 'play') return; e.preventDefault(); stick.id = e.pointerId; stick.sx = e.clientX - stage.getBoundingClientRect().left; stick.sy = e.clientY - stage.getBoundingClientRect().top; stick.x = stick.y = 0; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', e => { if (e.pointerId !== stick.id) return; const r = stage.getBoundingClientRect(); let x = (e.clientX - r.left - stick.sx) / 44, y = (e.clientY - r.top - stick.sy) / 44; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } stick.x = x; stick.y = y; });
+const endStick = e => { if (e.pointerId === stick.id) { stick.id = null; stick.x = stick.y = 0; } };
+cv.addEventListener('pointerup', endStick); cv.addEventListener('pointercancel', endStick);
+$('bark').addEventListener('pointerdown', e => { e.preventDefault(); audio(); bark(); });
+$('bark').addEventListener('contextmenu', e => e.preventDefault());
+if (matchMedia('(pointer: coarse)').matches) $('barkkey').textContent = 'tap';
+
+$('b-start').addEventListener('click', () => { audio(); const next = save.stars.filter(Boolean).length; if (next === 0) startLevel(0); else showLevels(false); });
+$('b-menu').addEventListener('click', () => showLevels(true));
+$('b-retry').addEventListener('click', () => startLevel(levelIdx));
+$('b-again').addEventListener('click', () => startLevel(levelIdx));
+$('b-next').addEventListener('click', () => { if (levelIdx + 1 < LEVELS.length) startLevel(levelIdx + 1); else showLevels(false); });
+$('b-back').addEventListener('click', () => { $('v-levels').hidden = true; mode = 'play'; $('bark').hidden = false; cv.focus(); });
+$('b-pup').addEventListener('click', () => { $('v-levels').hidden = true; $('v-pick').hidden = false; $('rail').hidden = true; S = null; mode = 'pick'; });
+const soundBtn = $('b-sound'); const paintSound = () => { soundBtn.textContent = save.sound ? 'Sound on' : 'Sound off'; soundBtn.setAttribute('aria-pressed', String(save.sound)); };
+soundBtn.addEventListener('click', () => { save.sound = !save.sound; persist(); paintSound(); if (save.sound) { audio(); SFX.meow(); } });
+
+cv.tabIndex = -1; cv.style.outline = 'none';
+paintSound(); buildPick(); resize(); requestAnimationFrame(frame);
+window.__catHerding = { get S() { return S; }, LEVELS, startLevel, save, update, bark, stick };   // for tests
+})();
+</script>
+</body>
+</html>
