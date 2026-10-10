@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Piggy Pusher · Maple's World</title>
+<meta name="description" content="A coin pusher run by well-dressed pigs. Tap to drop coins, topple coin towers, win bonus spins and push each pig's outfit off the edge.">
+<meta property="og:title" content="Piggy Pusher">
+<meta property="og:description" content="A coin pusher run by well-dressed pigs. Play money only.">
+<meta property="og:url" content="https://maplesworld.org/piggy-pusher/">
+<meta name="theme-color" content="#3b1642">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f5c542' stroke='%23b8860b' stroke-width='2'/%3E%3Cellipse cx='16' cy='17' rx='7' ry='5' fill='%23f48fa8'/%3E%3Ccircle cx='13.500' cy='17' r='1.300' fill='%23a8506a'/%3E%3Ccircle cx='18.500' cy='17' r='1.300' fill='%23a8506a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap">
+<style>
+/* Layout: one arcade cabinet, centred. Marquee and pig on top, the pusher bed in the middle, the prize tray at the bottom. */
+:root{
+  color-scheme: dark;
+  --plum:#3b1642;          /* cabinet */
+  --plum-deep:#24092b;
+  --gold:#f5c542;
+  --gold-deep:#b8860b;
+  --felt:#157a6e;          /* pusher bed */
+  --pig:#f9b4c4;
+  --cream:#fff6e6;
+  --ink:#2a1530;
+  --display:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--plum-deep);color:var(--cream);font-family:var(--body);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+[hidden]{display:none!important}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.corner{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));display:flex;gap:8px;z-index:2}
+.corner.l{left:calc(8px + env(safe-area-inset-left,0px))}.corner.r{right:calc(8px + env(safe-area-inset-right,0px))}
+.ib{font:800 13px var(--body);color:var(--cream);background:rgba(36,9,43,.7);border:1.5px solid rgba(245,197,66,.5);border-radius:999px;height:34px;padding:0 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;touch-action:manipulation}
+.ib:hover{border-color:var(--gold)}
+button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+#start{position:fixed;inset:0;display:flex;overflow-y:auto;padding:16px;background:rgba(36,9,43,.82);z-index:5}
+.card{margin:auto;width:min(460px,100%);background:var(--cream);color:var(--ink);border-radius:26px;border:5px solid var(--gold);padding:24px 22px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;box-shadow:0 10px 0 rgba(0,0,0,.35)}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(44px,12vw,66px);line-height:.92;margin:0;color:var(--plum);text-wrap:balance;letter-spacing:.01em}
+h1 span{color:#e0527c}
+p{margin:0;font-size:16px;line-height:1.4;font-weight:600;max-width:34ch;color:#5a4460}
+#pigcv{position:static;width:150px;height:150px}
+#play{font-family:var(--display);font-size:26px;letter-spacing:.03em;color:var(--plum);background:var(--gold);border:0;border-radius:999px;padding:12px 44px;cursor:pointer;box-shadow:0 7px 0 var(--gold-deep);touch-action:manipulation}
+#play:active{transform:translateY(5px);box-shadow:0 2px 0 var(--gold-deep)}
+.fine{font-size:12.5px;font-weight:600;color:#8a7490;max-width:38ch}
+.card a{color:#8a7490;font-weight:800;font-size:13px}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Piggy Pusher. Tap the cabinet to drop a coin."></canvas>
+<div class="corner l" id="cl" hidden><a class="ib" href="/">&larr; Maple's World</a></div>
+<div class="corner r" id="cr" hidden><button class="ib" id="sound" type="button" aria-pressed="true">Sound on</button></div>
+<div id="start">
+  <div class="card">
+    <canvas id="pigcv" width="300" height="300" aria-hidden="true"></canvas>
+    <h1>Piggy <span>Pusher</span></h1>
+    <p>Tap to drop a coin. Push coins, towers and prizes off the front edge. Dress every pig to win the round.</p>
+    <button id="play" type="button">Play</button>
+    <div class="fine">Play money only. Nothing to buy, nothing to cash out. Your coins refill on their own.</div>
+    <a href="/">&larr; Maple's World</a>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2, PI = Math.PI;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.random() * a.length | 0];
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, k) => a + (b - a) * k;
+const cv = $('c'); let g = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1, S = 1, OX = 0, OY = 0, tNow = 0;
+
+/* logical cabinet: 392 wide. Header, then the bed (360 x 560), then the prize tray. */
+const BW = 360, BD = 440, FR = 16, HEAD = 128, TRAY = 64, LW = BW + FR * 2, LH = HEAD + BD + TRAY + FR;
+const BX = FR, BY = HEAD, GUTTER_Y = BD - 130, PUSH_MIN = 60, PUSH_MAX = 140;
+
+/* ---------- saved (this browser only) ---------- */
+const save = { sound:true, level:0, purse:50, bank:0 };
+try { Object.assign(save, JSON.parse(localStorage.getItem('piggy-pusher') || '{}')); } catch (e) {}
+const persist = () => { try { localStorage.setItem('piggy-pusher', JSON.stringify(save)); } catch (e) {} };
+
+/* ---------- sound: all synthesised ---------- */
+let AC = null;
+function audio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === 'suspended') AC.resume(); return AC; }
+function tone(type, f0, f1, dur, vol, delay = 0) {
+  if (!save.sound) return; const ac = audio(); if (!ac) return;
+  const t = ac.currentTime + delay, o = ac.createOscillator(), v = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
+  v.gain.setValueAtTime(0.0001, t); v.gain.exponentialRampToValueAtTime(vol, t + 0.008); v.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(v).connect(ac.destination); o.start(t); o.stop(t + dur + 0.03);
+}
+let lastClink = 0;
+const SFX = {
+  drop:  () => tone('triangle', 520, 300, 0.07, 0.1),
+  clink: () => { if (tNow - lastClink < 0.05) return; lastClink = tNow; const f = rnd(2200, 3200); tone('sine', f, f * 0.98, 0.12, 0.07); tone('sine', f * 1.5, f * 1.48, 0.08, 0.035); },
+  win:   v => { tone('sine', 1320, 1320, 0.1, 0.12); tone('sine', 1760 + Math.min(v, 10) * 40, 1760, 0.16, 0.1, 0.06); },
+  lost:  () => tone('sine', 240, 150, 0.14, 0.08),
+  item:  () => [0, 4, 7, 12].forEach((s, i) => tone('triangle', 660 * Math.pow(2, s / 12), 660 * Math.pow(2, s / 12), 0.16, 0.13, i * 0.07)),
+  topple:() => { for (let i = 0; i < 7; i++) tone('sine', rnd(2000, 3200), 1900, 0.09, 0.06, i * 0.035); },
+  tick:  () => tone('square', 900, 700, 0.03, 0.05),
+  stop:  () => { tone('square', 300, 180, 0.09, 0.12); tone('sine', 880, 880, 0.12, 0.1, 0.02); },
+  oink:  () => { tone('sawtooth', 330, 190, 0.11, 0.1); tone('sawtooth', 300, 170, 0.13, 0.1, 0.13); },
+  fanfare: () => [0, 4, 7, 12, 7, 12, 16].forEach((s, i) => tone('triangle', 523 * Math.pow(2, s / 12), 523 * Math.pow(2, s / 12), 0.24, 0.15, i * 0.12)),
+  smash: () => { tone('sawtooth', 200, 60, 0.2, 0.14); SFX.topple(); },
+  walls: () => { tone('triangle', 300, 600, 0.2, 0.12); tone('triangle', 450, 900, 0.2, 0.1, 0.1); },
+};
+
+/* ---------- drawing kit ---------- */
+const OUT = 'rgba(60,25,45,.5)';
+function shape(fill, stroke = OUT, lw = 1.5) { g.fillStyle = fill; g.fill(); if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); } }
+function ell(x, y, rx, ry, rot = 0) { g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, TAU); }
+function poly(...p) { g.beginPath(); for (let i = 0; i < p.length; i += 2) g.lineTo(p[i], p[i + 1]); g.closePath(); }
+function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function star(x, y, r, n = 5) { g.beginPath(); for (let i = 0; i < n * 2; i++) { const a = i / (n * 2) * TAU - PI / 2, q = i % 2 ? r * 0.45 : r; g.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); } g.closePath(); }
+
+/* ---------- the wardrobe. Pig coordinates: body centre at 0,0; head at 0,-38; feet at y 52 ---------- */
+// c: where the piece sits (for drawing it alone as a prize), s: prize scale
+const PIECES = {
+  tophat:  { layer:'hat', c:[0, -80], s:1.0, name:'top hat', draw() { ell(0, -62, 30, 7); shape('#2b2233'); rr(-19, -98, 38, 37, 3); shape('#2b2233'); g.beginPath(); g.rect(-19, -72, 38, 7); shape('#e0527c', null); } },
+  bowtie:  { layer:'neck', c:[0, -10], s:1.5, name:'bow tie', draw() { poly(0, -10, -17, -19, -17, -1); shape('#e0527c'); poly(0, -10, 17, -19, 17, -1); shape('#e0527c'); ell(0, -10, 4.5, 5); shape('#b93a62'); } },
+  monocle: { layer:'face', c:[11, -44], s:1.7, name:'monocle', draw() { ell(11, -46, 9, 9); g.fillStyle = 'rgba(200,235,255,.45)'; g.fill(); g.strokeStyle = '#f5c542'; g.lineWidth = 2.6; g.stroke(); g.strokeStyle = '#f5c542'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(19, -42); g.quadraticCurveTo(26, -28, 20, -14); g.stroke(); } },
+  sunhat:  { layer:'hat', c:[0, -68], s:0.8, name:'sun hat', draw() { ell(0, -60, 44, 10); shape('#f7dc8a'); g.beginPath(); g.arc(0, -62, 21, PI, 0); g.closePath(); shape('#f7dc8a'); g.beginPath(); g.rect(-21, -68, 42, 6); shape('#e0527c', null); ell(15, -66, 6, 6); shape('#ff8fb0'); ell(15, -66, 2.2, 2.2); shape('#f5c542', null); } },
+  pearls:  { layer:'neck', c:[0, -8], s:1.5, name:'pearls', draw() { for (let i = -3; i <= 3; i++) { ell(i * 6.2, -9 + (9 - i * i) * 0.75, 3.6, 3.6); shape('#fffaf0', 'rgba(120,100,110,.5)', 1); } } },
+  shades:  { layer:'face', c:[0, -46], s:1.4, name:'sunglasses', draw() { for (const s of [-1, 1]) { rr(s * 12 - 9, -52, 18, 12, 5); shape('#1f1a2b'); g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.rect(s * 12 - 6, -50, 5, 2.4); g.fill(); } g.strokeStyle = '#1f1a2b'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(-3, -47); g.lineTo(3, -47); g.stroke(); } },
+  cowboy:  { layer:'hat', c:[0, -72], s:0.8, name:'cowboy hat', draw() { g.beginPath(); g.moveTo(-44, -60); g.quadraticCurveTo(-30, -52, 0, -56); g.quadraticCurveTo(30, -52, 44, -60); g.quadraticCurveTo(30, -70, 0, -66); g.quadraticCurveTo(-30, -70, -44, -60); g.closePath(); shape('#a8703a'); g.beginPath(); g.moveTo(-20, -63); g.quadraticCurveTo(-22, -92, -8, -88); g.quadraticCurveTo(0, -82, 8, -88); g.quadraticCurveTo(22, -92, 20, -63); g.closePath(); shape('#a8703a'); g.beginPath(); g.rect(-20, -70, 40, 5); shape('#5a3518', null); star(0, -67.500, 4); shape('#f5c542', null); } },
+  bandana: { layer:'neck', c:[0, -4], s:1.4, name:'bandana', draw() { poly(-22, -16, 22, -16, 0, 12); shape('#d8322f'); g.fillStyle = '#fff'; for (const [x, y] of [[-8, -9], [8, -9], [0, -2], [0, -11]]) { ell(x, y, 1.6, 1.6); g.fill(); } } },
+  boots:   { layer:'feet', c:[0, 44], s:1.3, name:'boots', draw() { for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 12 - 8, 30); g.lineTo(s * 12 + 8, 30); g.lineTo(s * 12 + 8, 48); g.lineTo(s * 12 + 15, 50); g.lineTo(s * 12 + 15, 56); g.lineTo(s * 12 - 8, 56); g.closePath(); shape('#7a4a22'); g.strokeStyle = '#f5c542'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(s * 12 - 8, 36); g.lineTo(s * 12 + 8, 36); g.stroke(); } } },
+  chefhat: { layer:'hat', c:[0, -84], s:0.9, name:"chef's hat", draw() { for (const [x, y, r] of [[-14, -90, 14], [14, -90, 14], [0, -98, 16]]) { ell(x, y, r, r); shape('#fff'); } rr(-17, -84, 34, 22, 3); shape('#fff'); g.strokeStyle = 'rgba(60,25,45,.25)'; g.lineWidth = 1.2; for (const x of [-8, 0, 8]) { g.beginPath(); g.moveTo(x, -80); g.lineTo(x, -66); g.stroke(); } } },
+  apron:   { layer:'body', c:[0, 12], s:1.0, name:'apron', draw() { g.beginPath(); g.moveTo(-14, -14); g.lineTo(14, -14); g.lineTo(26, 40); g.quadraticCurveTo(0, 48, -26, 40); g.closePath(); shape('#fff'); rr(-10, 8, 20, 14, 3); shape('#f3e9da', 'rgba(60,25,45,.3)', 1.2); g.strokeStyle = '#e0527c'; g.lineWidth = 2; g.beginPath(); g.moveTo(-14, -14); g.lineTo(-20, -24); g.moveTo(14, -14); g.lineTo(20, -24); g.stroke(); } },
+  moustache:{ layer:'face', c:[0, -19], s:2.0, name:'moustache', draw() { for (const s of [-1, 1]) { g.beginPath(); g.moveTo(0, -20); g.quadraticCurveTo(s * 9, -27, s * 19, -22); g.quadraticCurveTo(s * 24, -20, s * 22, -27); g.quadraticCurveTo(s * 25, -14, s * 14, -15); g.quadraticCurveTo(s * 6, -15, 0, -18); g.closePath(); shape('#3a2418', null); } } },
+  spoon:   { layer:'hand', c:[44, -8], s:1.2, name:'wooden spoon', draw() { g.strokeStyle = '#b98a52'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(42, 14); g.lineTo(46, -20); g.stroke(); ell(47, -30, 8, 11); shape('#c99a62'); } },
+  tiara:   { layer:'hat', c:[0, -70], s:1.3, name:'tiara', draw() { g.beginPath(); g.moveTo(-20, -62); g.lineTo(-16, -76); g.lineTo(-8, -68); g.lineTo(0, -84); g.lineTo(8, -68); g.lineTo(16, -76); g.lineTo(20, -62); g.closePath(); shape('#f5c542'); ell(0, -72, 3.4, 3.4); shape('#e0527c'); ell(-13, -68, 2, 2); shape('#7fd3ff', null); ell(13, -68, 2, 2); shape('#7fd3ff', null); } },
+  gown:    { layer:'body', c:[0, 14], s:0.9, name:'ball gown', draw() { g.beginPath(); g.moveTo(-16, -16); g.quadraticCurveTo(0, -8, 16, -16); g.lineTo(40, 46); g.quadraticCurveTo(20, 54, 0, 48); g.quadraticCurveTo(-20, 54, -40, 46); g.closePath(); shape('#9b6fe0'); g.strokeStyle = '#c9a8ff'; g.lineWidth = 2; g.beginPath(); g.moveTo(-36, 38); g.quadraticCurveTo(-18, 46, 0, 40); g.quadraticCurveTo(18, 46, 36, 38); g.stroke(); g.beginPath(); g.moveTo(-18, 2); g.lineTo(18, 2); g.strokeStyle = '#f5c542'; g.lineWidth = 3; g.stroke(); } },
+  fan:     { layer:'hand', c:[46, -10], s:1.2, name:'fan', draw() { g.save(); g.translate(42, 10); for (let i = 0; i < 6; i++) { g.save(); g.rotate(-1.25 + i * 0.3); poly(0, 0, -5, -30, 5, -30); shape(i % 2 ? '#ff8fb0' : '#ffd0de'); g.restore(); } g.restore(); } },
+  crown:   { layer:'hat', c:[0, -74], s:1.1, name:'crown', draw() { g.beginPath(); g.moveTo(-22, -60); g.lineTo(-24, -84); g.lineTo(-12, -72); g.lineTo(0, -90); g.lineTo(12, -72); g.lineTo(24, -84); g.lineTo(22, -60); g.closePath(); shape('#f5c542'); g.beginPath(); g.rect(-22, -66, 44, 6); shape('#d8322f', null); for (const [x, y] of [[-24, -84], [0, -90], [24, -84]]) { ell(x, y, 3, 3); shape('#e0527c'); } } },
+  cape:    { layer:'back', c:[0, 14], s:0.85, name:'royal cape', draw() { g.beginPath(); g.moveTo(-20, -18); g.lineTo(20, -18); g.lineTo(46, 50); g.quadraticCurveTo(0, 60, -46, 50); g.closePath(); shape('#b0232a'); g.strokeStyle = '#fff'; g.lineWidth = 7; g.beginPath(); g.moveTo(-44, 48); g.quadraticCurveTo(0, 58, 44, 48); g.stroke(); g.fillStyle = '#2b2233'; for (let i = -3; i <= 3; i++) { ell(i * 12, 51 - Math.abs(i) * 0.5, 1.6, 1.6); g.fill(); } } },
+  sceptre: { layer:'hand', c:[44, -8], s:1.15, name:'sceptre', draw() { g.strokeStyle = '#f5c542'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(42, 22); g.lineTo(46, -22); g.stroke(); ell(47, -30, 8, 8); shape('#e0527c'); star(47, -30, 4.5); shape('#fff6e6', null); } },
+  jacket:  { layer:'body', c:[0, 12], s:1.0, name:'tailcoat', draw() { ell(0, 12, 31, 35); shape('#2b2233'); poly(-10, -18, 10, -18, 0, 18); shape('#fff', null); g.fillStyle = '#f5c542'; for (const y of [22, 32]) { ell(0, y, 2.2, 2.2); g.fill(); } } },
+};
+const LAYERS = ['back', 'feet', 'body', 'hand', 'neck', 'face', 'hat'];
+function drawPig(wear, t, o = {}) {       // wear: array of piece names; o.dance tilts and kicks
+  const skin = '#f9b4c4', dark = '#f48fa8', d = o.dance ? Math.sin(t * 9) : 0, has = n => wear.includes(n);
+  g.save(); if (o.dance) { g.rotate(d * 0.1); g.translate(0, -Math.abs(Math.sin(t * 9)) * 7); }
+  if (has('cape')) PIECES.cape.draw();
+  for (const s of [-1, 1]) { g.save(); g.translate(s * 12, 34); g.rotate(o.dance ? s * d * 0.35 : 0); rr(-7, 0, 14, 20, 5); shape(skin); rr(-7, 14, 14, 7, 3); shape('#8a5a6a'); g.restore(); }
+  if (has('boots')) PIECES.boots.draw();
+  ell(0, 12, 30, 34); shape(skin); ell(0, 16, 19, 22); shape('#fcd0da', null);
+  // curly tail
+  g.strokeStyle = dark; g.lineWidth = 3.4; g.lineCap = 'round'; g.beginPath(); g.arc(-34, 22, 6, 0, PI * 1.6); g.stroke();
+  for (const n of ['jacket', 'apron', 'gown']) if (has(n)) PIECES[n].draw();
+  for (const s of [-1, 1]) { g.save(); g.translate(s * 30, 0); g.rotate(s * (o.dance ? -0.9 + d * 0.5 : 0.25) ); ell(s * 4, 12, 7.5, 15); shape(has('jacket') ? '#2b2233' : skin); ell(s * 5, 26, 6, 5); shape('#8a5a6a'); g.restore(); }
+  for (const n of ['spoon', 'fan', 'sceptre']) if (has(n)) PIECES[n].draw();
+  // head
+  for (const s of [-1, 1]) { g.save(); g.translate(s * 20, -58); g.rotate(s * 0.5); poly(-10, 6, 0, -14, 12, 8); shape(skin); poly(-5, 4, 0, -7, 7, 5); shape(dark, null); g.restore(); }
+  ell(0, -38, 29, 27); shape(skin);
+  for (const n of ['bowtie', 'pearls', 'bandana']) if (has(n)) PIECES[n].draw();
+  ell(0, -30, 13, 9.5); shape(dark); g.fillStyle = '#b85a78'; ell(-4.5, -30, 2.2, 3.2); g.fill(); ell(4.5, -30, 2.2, 3.2); g.fill();
+  if (!has('shades')) for (const s of [-1, 1]) { const blink = (t * 0.7 + (o.seed || 0)) % 3 < 0.09; g.fillStyle = '#2b2233'; ell(s * 11, -46, 3.4, blink ? 0.7 : 4); g.fill(); if (!blink) { g.fillStyle = '#fff'; ell(s * 11 + 1, -47.500, 1.2, 1.2); g.fill(); } }
+  g.fillStyle = 'rgba(255,110,150,.4)'; for (const s of [-1, 1]) { ell(s * 20, -33, 5, 3.5); g.fill(); }
+  g.strokeStyle = '#8a3d58'; g.lineWidth = 1.7; g.lineCap = 'round'; g.beginPath(); g.arc(0, -22, o.happy ? 7 : 5, 0.25, PI - 0.25); g.stroke();
+  for (const L of ['face', 'hat']) for (const n in PIECES) if (PIECES[n].layer === L && has(n)) PIECES[n].draw();
+  g.restore();
+}
+function drawPiece(name, s = 1) { const p = PIECES[name]; g.save(); g.scale(s * p.s, s * p.s); g.translate(-p.c[0], -p.c[1]); p.draw(); g.restore(); }
+
+/* ---------- the troupe and how each round grows ---------- */
+const PIGS = [
+  { name:'Sir Oinksalot',     pieces:['tophat', 'bowtie'], news:'Push the clothes off the front edge' },
+  { name:'Dolly Hamilton',    pieces:['sunhat', 'pearls', 'shades'], news:'New: coin towers and big coins' },
+  { name:'Hamlet the Kid',    pieces:['cowboy', 'bandana', 'boots'], news:'New: 3 pig tokens win a bonus spin' },
+  { name:'Chef Truffle',      pieces:['chefhat', 'apron', 'moustache', 'spoon'], news:'New: piggy banks and gift boxes' },
+  { name:'Lady Pigglesworth', pieces:['tiara', 'gown', 'pearls', 'fan'], news:'New: bumpers on the bed' },
+  { name:'King Curlytail',    pieces:['crown', 'cape', 'sceptre', 'monocle', 'jacket'], news:'New: a faster pusher' },
+];
+function rules(n) {   // what the bed offers at round n (0-based); rounds past the sixth keep everything and stack taller
+  const lap = Math.floor(n / PIGS.length);
+  return { pig:PIGS[n % PIGS.length], towers:n >= 1, big:n >= 1, tokens:n >= 2, gems:n >= 2, banks:n >= 3, gifts:n >= 3,
+    bumpers:n >= 4 ? (n >= 5 ? [[110, 250], [250, 250], [180, 335]] : [[120, 280], [240, 280]]) : [],
+    period:n >= 5 ? 2.7 : 3.4, towerH:[5, 8 + Math.min(n, 8)], prizeEvery:Math.max(6, 11 - Math.floor(n / 2)), lap };
+}
+
+/* ---------- state ---------- */
+let playing = false, G = null;
+const R = { coin:15, big:23, gem:14, tower:16, piece:21, token:16, bank:22, gift:18, bumper:13 };
+const MASS = { coin:1, big:3, gem:1.2, tower:3, piece:2.2, token:1.4, bank:2.6, gift:2, bumper:1e9 };
+function body(type, x, y, extra) { return { type, x, y, r:R[type], m:MASS[type], fall:0, moved:0, spin:rnd(0, TAU), ...extra }; }
+function newGame() {
+  G = { n:save.level, purse:Math.max(20, save.purse), bank:save.bank, bodies:[], fx:[], queue:[], tokens:0, phase:0, front:PUSH_MIN, wallsT:0, dropCd:0, regenT:0, since:0, aimX:BW / 2, held:false,
+    banner:null, slot:null, cele:null, dancers:[], got:[], fever:0 };
+  for (let i = 0; i < 104; i++) G.bodies.push(body('coin', rnd(20, BW - 20), rnd(160, BD - 20)));   // start nearly full, so every coin dropped pushes one toward the edge
+  startRound(true);
+  for (let k = 0; k < 160; k++) solve(0);
+  G.bodies = G.bodies.filter(b => b.y < BD - 4 && b.x > 0 && b.x < BW);
+  for (const b of G.bodies) b.moved = 0;
+}
+function startRound(first) {
+  const ru = G.rules = rules(G.n); G.got = []; G.tokens = first ? 0 : G.tokens;
+  G.bodies = G.bodies.filter(b => b.type !== 'bumper' && b.type !== 'piece');
+  for (const [x, y] of ru.bumpers) G.bodies.push(body('bumper', x, y));
+  ru.pig.pieces.forEach((p, i) => { const k = ru.pig.pieces.length; G.bodies.push(body('piece', BW * (i + 1) / (k + 1) + rnd(-14, 14), (first ? 250 : 175) + (i % 2) * 55, { piece:p, fall:0.28 })); });
+  if (ru.towers) for (let i = 0; i < 2; i++) G.queue.push({ t:1.5 + i, type:'tower' });
+  banner('ROUND ' + (G.n + 1), 'Dress ' + ru.pig.name, ru.news, 3.2);
+  save.level = G.n; persist();
+}
+function banner(big, mid, small, life) { G.banner = { big, mid, small, t:0, life }; }
+
+/* ---------- physics: position based. Nothing moves unless something shoves it ---------- */
+function solve(pusherV) {
+  const B = G.bodies, walls = G.wallsT > 0;
+  for (let i = 0; i < B.length; i++) { const a = B[i]; if (a.fall > 0) continue;
+    for (let j = i + 1; j < B.length; j++) { const b = B[j]; if (b.fall > 0) continue;
+      const dx = b.x - a.x, dy = b.y - a.y, min = a.r + b.r; if (dx > min || dx < -min || dy > min || dy < -min) continue;
+      const d2 = dx * dx + dy * dy; if (d2 >= min * min) continue;
+      const d = Math.sqrt(d2) || 0.01, ov = min - d, nx = dx / d, ny = dy / d, wa = b.m / (a.m + b.m), wb = 1 - wa;
+      if (a.type !== 'bumper') { a.x -= nx * ov * wa; a.y -= ny * ov * wa; a.moved += ov * wa; }
+      if (b.type !== 'bumper') { b.x += nx * ov * wb; b.y += ny * ov * wb; b.moved += ov * wb; }
+      if (ov > 1.2 && pusherV > 0) G.clinks++;
+    } }
+  for (const a of B) { if (a.fall > 0 || a.type === 'bumper') continue;
+    if (a.y - a.r < G.front) { a.moved += G.front + a.r - a.y; a.y = G.front + a.r; }
+    if (a.y < GUTTER_Y || walls) { if (a.x < a.r) a.x = a.r; if (a.x > BW - a.r) a.x = BW - a.r; } }
+}
+function dropAt(type, x, extra, free) {
+  const b = body(type, clamp(x, R[type] + 2, BW - R[type] - 2), 0, extra); b.fall = 0.28; b.y = G.front + b.r + 1 + rnd(0, 6); G.bodies.push(b); return b;
+}
+function playerDrop(x) {
+  if (!playing || G.slot || G.cele || G.dropCd > 0) return; audio();
+  if (G.purse <= 0) { fxText(BW / 2, 120, 'Coins refill soon', '#fff6e6'); G.dropCd = 0.4; return; }
+  G.purse--; G.dropCd = 0.16; G.since++; dropAt('coin', x); SFX.drop();
+  if (G.since >= G.rules.prizeEvery) { G.since = 0; prize(); }
+}
+function prize() {
+  const ru = G.rules, bag = ['big'];
+  if (ru.towers) bag.push('tower', 'tower'); if (ru.gems) bag.push('gem', 'gem'); if (ru.tokens) bag.push('token', 'token', 'token'); if (ru.banks) bag.push('bank'); if (ru.gifts) bag.push('gift');
+  if (!ru.towers) { bag.push('coin'); }
+  G.queue.push({ t:0.5, type:pick(bag) });
+}
+function spawn(type, x) {
+  if (G.bodies.length > 200) return;
+  const ru = G.rules; x = x == null ? rnd(40, BW - 40) : x;
+  if (type === 'tower') dropAt('tower', x, { stack:Math.round(rnd(ru.towerH[0], ru.towerH[1])) });
+  else if (type === 'gem') dropAt('gem', x, { hue:pick([0, 200, 280, 140]) });
+  else dropAt(type, x);
+}
+function shower(n, big) { for (let i = 0; i < n; i++) G.queue.push({ t:0.25 + i * 0.09, type:big && i % 8 === 7 ? 'big' : 'coin' }); }
+function fxText(x, y, text, color, size = 15) { G.fx.push({ kind:'text', x, y, text, color, size, t:0, life:1.1 }); }
+function burst(x, y, n, colors) { for (let i = 0; i < n; i++) G.fx.push({ kind:'spark', x, y, vx:rnd(-150, 150), vy:rnd(-220, -40), t:0, life:rnd(0.5, 0.9), c:pick(colors) }); }
+
+function collect(b) {   // over the front edge: into the prize tray
+  const x = b.x; G.fx.push({ kind:'fallcoin', x, y:BD, t:0, life:0.45, b });
+  if (b.type === 'coin') { G.purse++; G.bank++; SFX.win(1); }
+  else if (b.type === 'big') { G.purse += 3; G.bank += 5; SFX.win(5); fxText(x, BD - 14, '+5', '#f5c542', 18); }
+  else if (b.type === 'gem') { G.bank += 10; SFX.item(); fxText(x, BD - 14, 'Gem +10', '#7fd3ff', 16); burst(x, BD - 6, 8, ['#7fd3ff', '#fff']); }
+  else if (b.type === 'tower') { G.purse += b.stack; G.bank += b.stack; SFX.topple(); SFX.win(b.stack); fxText(x, BD - 14, 'Tower +' + b.stack, '#f5c542', 18); burst(x, BD - 6, 12, ['#f5c542', '#fff6e6']); }
+  else if (b.type === 'token') { G.tokens++; SFX.item(); SFX.oink(); fxText(x, BD - 14, 'Token ' + G.tokens + '/3', '#ff8fb0', 16); if (G.tokens >= 3) { G.tokens = 0; G.queue.push({ t:0.7, slot:true }); } }
+  else if (b.type === 'bank') { SFX.smash(); SFX.oink(); fxText(x, BD - 30, 'Piggy bank!', '#ff8fb0', 20); burst(x, BD - 6, 22, ['#f5c542', '#ff8fb0', '#fff']); shower(12); G.fever = 2; }
+  else if (b.type === 'gift') gift(x);
+  else if (b.type === 'piece') { G.got.push(b.piece); SFX.item(); SFX.oink(); fxText(x, BD - 30, PIECES[b.piece].name + '!', '#fff6e6', 20); burst(x, BD - 6, 18, ['#f5c542', '#ff8fb0', '#7fd3ff']); G.fx.push({ kind:'fly', piece:b.piece, x, y:BD, t:0, life:0.9 }); G.fever = 1.5;
+    if (G.got.length >= G.rules.pig.pieces.length) G.queue.push({ t:1.1, cele:true }); }
+}
+function gift(x) {
+  const k = pick(['walls', 'shower', 'tower', 'big']); SFX.item(); burst(x, BD - 6, 14, ['#7fd3ff', '#f5c542', '#ff8fb0']); G.fever = 1.5;
+  if (k === 'walls') { G.wallsT = 25; SFX.walls(); fxText(x, BD - 30, 'Side walls up!', '#7fd3ff', 18); }
+  else if (k === 'shower') { shower(9); fxText(x, BD - 30, 'Coin shower!', '#f5c542', 18); }
+  else if (k === 'tower') { for (let i = 0; i < 2; i++) G.queue.push({ t:0.4 + i * 0.5, type:'tower' }); fxText(x, BD - 30, 'Two towers!', '#f5c542', 18); }
+  else { for (let i = 0; i < 3; i++) G.queue.push({ t:0.3 + i * 0.3, type:'big' }); fxText(x, BD - 30, 'Big coins!', '#f5c542', 18); }
+}
+function lose(b) {
+  G.fx.push({ kind:'gutter', x:b.x < BW / 2 ? -6 : BW + 6, y:b.y, t:0, life:0.35, b }); SFX.lost();
+  if (b.type === 'piece') { G.queue.push({ t:2.2, type:'piece', piece:b.piece }); fxText(BW / 2, 200, 'It will come back around', '#fff6e6', 14); }
+  if (b.type === 'token' || b.type === 'bank' || b.type === 'gift') G.since = Math.max(G.since, G.rules.prizeEvery - 3);
+}
+
+/* ---------- bonus spin ---------- */
+const SYMS = ['coin', 'gem', 'tower', 'walls', 'pig'];
+function startSlot() {
+  const r = Math.random(); let reels;
+  if (r < 0.34) { const s = pick(SYMS); reels = [s, s, s]; }
+  else if (r < 0.84) { const s = pick(SYMS), o = pick(SYMS.filter(q => q !== s)); reels = [s, s, o].sort(() => Math.random() - 0.5); }
+  else { reels = SYMS.slice().sort(() => Math.random() - 0.5).slice(0, 3); }
+  G.slot = { t:0, reels, stops:[1.3, 1.9, 2.6], stopped:0, paid:false, tick:0 }; SFX.fanfare();
+}
+function paySlot() {
+  const r = G.slot.reels, cnt = {}; for (const s of r) cnt[s] = (cnt[s] || 0) + 1; const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0], n = cnt[top];
+  if (n === 3) {
+    if (top === 'pig') { G.slot.msg = 'HOG WILD JACKPOT!'; shower(36, true); G.wallsT = Math.max(G.wallsT, 20); dance(4.5); SFX.fanfare(); SFX.oink(); }
+    else if (top === 'coin') { G.slot.msg = 'COIN SHOWER!'; shower(22); }
+    else if (top === 'gem') { G.slot.msg = 'GEM RAIN!'; for (let i = 0; i < 5; i++) G.queue.push({ t:0.4 + i * 0.25, type:'gem' }); }
+    else if (top === 'tower') { G.slot.msg = 'TOWER TRIO!'; for (let i = 0; i < 3; i++) G.queue.push({ t:0.4 + i * 0.4, type:'tower' }); }
+    else { G.slot.msg = 'WALLS UP!'; G.wallsT = 45; shower(10); SFX.walls(); }
+    G.fever = 4; SFX.fanfare();
+  } else if (n === 2) { G.slot.msg = 'A PAIR!'; shower(top === 'pig' ? 12 : 7); if (top === 'walls') { G.wallsT = Math.max(G.wallsT, 15); } G.fever = 2; SFX.item(); }
+  else { G.slot.msg = 'OINK. HAVE FOUR.'; shower(4); SFX.oink(); }
+}
+function dance(life) { const seen = PIGS.slice(0, Math.min(PIGS.length, G.n + 1)); G.dancers = [0, 1, 2].map(i => ({ pig:seen[(G.n - i + seen.length * 3) % seen.length], i })); G.danceT = life; }
+
+/* ---------- update ---------- */
+function update(dt) {
+  tNow += dt; if (!playing || !G) return;
+  G.clinks = 0; G.dropCd -= dt; G.fever = Math.max(0, G.fever - dt); G.wallsT = Math.max(0, G.wallsT - dt); if (G.danceT > 0) G.danceT -= dt;
+  if (G.banner && (G.banner.t += dt) > G.banner.life) G.banner = null;
+  // purse refills slowly so nobody is ever stuck
+  if (G.purse < 30) { G.regenT += dt; if (G.regenT > 0.8) { G.regenT = 0; G.purse++; } } else G.regenT = 0;
+  if (G.held && !G.slot && !G.cele) { G.holdT -= dt; if (G.holdT <= 0) { playerDrop(G.aimX); G.holdT = 0.2; } }
+  // things on their way down the chute
+  for (const q of G.queue) q.t -= dt;
+  for (const q of G.queue.filter(q => q.t <= 0)) { if (q.slot) startSlot(); else if (q.cele) celebrate(); else if (q.type === 'piece') dropAt('piece', rnd(60, BW - 60), { piece:q.piece }); else spawn(q.type); }
+  G.queue = G.queue.filter(q => q.t > 0);
+  if (G.slot) { const s = G.slot; s.t += dt; if (s.stopped < 3) { s.tick -= dt; if (s.tick <= 0) { s.tick = 0.07; SFX.tick(); } if (s.t >= s.stops[s.stopped]) { s.stopped++; SFX.stop(); } } if (s.stopped === 3 && !s.paid && s.t > 2.9) { s.paid = true; paySlot(); } if (s.t > 5) G.slot = null; }
+  if (G.cele) { G.cele.t += dt; if (Math.random() < dt * 30) G.fx.push({ kind:'conf', x:rnd(-FR, BW + FR), y:-HEAD, vx:rnd(-30, 30), vy:rnd(140, 260), t:0, life:4, c:pick(['#f5c542', '#ff8fb0', '#7fd3ff', '#9bdb7a', '#c9a8ff']), rot:rnd(0, TAU) }); if (G.cele.t > 6) { G.cele = null; G.n++; startRound(false); } }
+
+  const pf = G.front; G.phase += dt * TAU / G.rules.period; G.front = (PUSH_MIN + PUSH_MAX) / 2 + Math.sin(G.phase) * (PUSH_MAX - PUSH_MIN) / 2; const pv = G.front - pf;
+  for (const b of G.bodies) if (b.fall > 0) { b.fall -= dt; if (b.fall <= 0) { b.fall = 0; b.y = Math.max(b.y, G.front + b.r); SFX.clink(); } }
+  for (let k = 0; k < 4; k++) solve(pv);
+  if (G.clinks > 2 && Math.random() < 0.3) SFX.clink();
+  const keep = [];
+  for (const b of G.bodies) {
+    if (b.fall > 0 || b.type === 'bumper') { keep.push(b); continue; }
+    if (b.type === 'tower' && b.moved > 85) { SFX.topple(); fxText(b.x, b.y - 20, 'Topple!', '#f5c542', 16); for (let i = 0; i < b.stack; i++) { const a = i / b.stack * TAU; keep.push(body('coin', clamp(b.x + Math.cos(a) * (6 + i * 1.5), 16, BW - 16), b.y + Math.sin(a) * (6 + i * 1.5) + 6)); } continue; }
+    if (b.y > BD + 2) { collect(b); continue; }
+    if (b.x < 0 || b.x > BW) { lose(b); continue; }
+    keep.push(b);
+  }
+  G.bodies = keep;
+  for (const f of G.fx) { f.t += dt; if (f.vx != null) { f.x += f.vx * dt; f.y += f.vy * dt; if (f.kind === 'spark') f.vy += 500 * dt; } }
+  G.fx = G.fx.filter(f => f.t < f.life);
+  if ((update.sv = (update.sv || 0) + dt) > 3) { update.sv = 0; save.purse = G.purse; save.bank = G.bank; persist(); }
+}
+function celebrate() { G.cele = { t:0 }; G.purse += 15; dance(6); SFX.fanfare(); SFX.oink(); shower(10); G.fever = 6; }
+
+/* ---------- drawing the bed ---------- */
+function coinFace(r, col = ['#ffe58a', '#f5c542', '#b8860b'], mark = 'snout') {
+  ell(0, 2.6, r, r); g.fillStyle = col[2]; g.fill();
+  ell(0, 0, r, r); const gr = g.createLinearGradient(-r, -r, r, r); gr.addColorStop(0, col[0]); gr.addColorStop(1, col[1]); g.fillStyle = gr; g.fill(); g.strokeStyle = col[2]; g.lineWidth = 1.4; g.stroke();
+  ell(0, 0, r * 0.74, r * 0.74); g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1.2; g.stroke();
+  if (mark === 'snout') { ell(0, 0, r * 0.42, r * 0.3); g.fillStyle = col[2]; g.globalAlpha = 0.55; g.fill(); g.globalAlpha = 1; g.fillStyle = col[0]; ell(-r * 0.16, 0, r * 0.08, r * 0.12); g.fill(); ell(r * 0.16, 0, r * 0.08, r * 0.12); g.fill(); }
+  g.fillStyle = 'rgba(255,255,255,.55)'; ell(-r * 0.4, -r * 0.45, r * 0.2, r * 0.1, -0.7); g.fill();
+}
+function drawBody(b) {
+  const lift = b.fall > 0 ? Math.min(1, b.fall / 0.28) : 0, sc = 1 + lift * 0.5;
+  if (lift > 0) { g.fillStyle = 'rgba(0,0,0,.2)'; ell(b.x, b.y + 4, b.r * (1 - lift * 0.3), b.r * (1 - lift * 0.3)); g.fill(); }
+  g.save(); g.translate(b.x, b.y - lift * 46); g.scale(sc, sc);
+  if (b.type === 'coin') coinFace(b.r);
+  else if (b.type === 'big') { coinFace(b.r, ['#fff1b0', '#f7b500', '#a86f00'], null); g.fillStyle = '#a86f00'; g.font = '400 24px "Lilita One", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('5', 0, 1); }
+  else if (b.type === 'tower') { const wob = Math.sin(tNow * 6 + b.spin) * Math.min(1, b.moved / 85) * 3; g.fillStyle = 'rgba(0,0,0,.22)'; ell(4, 6, b.r + 3, b.r); g.fill(); for (let k = 0; k < b.stack; k++) { g.save(); g.translate(wob * k / b.stack, -k * 3.6); if (k === b.stack - 1) coinFace(b.r); else { ell(0, 2.6, b.r, b.r); g.fillStyle = k % 2 ? '#b8860b' : '#d9a520'; g.fill(); g.strokeStyle = '#8a6508'; g.lineWidth = 1; g.stroke(); } g.restore(); } }
+  else if (b.type === 'gem') { const c = 'hsl(' + b.hue + ',85%,', r = b.r; g.fillStyle = 'rgba(0,0,0,.2)'; ell(2, 4, r, r * 0.8); g.fill(); poly(0, -r, r, -r * 0.2, r * 0.6, r, -r * 0.6, r, -r, -r * 0.2); shape(c + '62%)', c + '35%)'); poly(0, -r, r * 0.45, -r * 0.2, 0, r, -r * 0.45, -r * 0.2); shape(c + '78%)', null); g.fillStyle = 'rgba(255,255,255,.8)'; ell(-r * 0.3, -r * 0.4, 2.4, 1.4, -0.6); g.fill(); }
+  else if (b.type === 'token') { coinFace(b.r, ['#ffd0de', '#ff8fb0', '#c9537a'], null); for (const s of [-1, 1]) { poly(s * 5, -8, s * 11, -13, s * 12, -5); shape('#ff8fb0', '#c9537a', 1); } ell(0, 1, 7, 5); shape('#f06a94', '#c9537a', 1); g.fillStyle = '#a8395e'; ell(-2.500, 1, 1.2, 1.8); g.fill(); ell(2.500, 1, 1.2, 1.8); g.fill(); }
+  else if (b.type === 'bank') { g.fillStyle = 'rgba(0,0,0,.2)'; ell(3, 6, 22, 15); g.fill(); for (const s of [-1, 1]) { rr(s * 11 - 4, 8, 8, 9, 3); shape('#f48fa8'); } ell(0, 0, 22, 16); shape('#f9b4c4'); for (const s of [-1, 1]) { poly(s * 8, -12, s * 14, -21, s * 17, -9); shape('#f48fa8'); } ell(-17, 1, 7, 6); shape('#f48fa8'); g.fillStyle = '#b85a78'; ell(-19, 1, 1.3, 2); g.fill(); ell(-15, 1, 1.3, 2); g.fill(); g.fillStyle = '#2b2233'; ell(-7, -5, 2, 2.4); g.fill(); rr(-2, -13, 12, 3, 1.5); g.fillStyle = '#8a3d58'; g.fill(); }
+  else if (b.type === 'gift') { const r = b.r; g.fillStyle = 'rgba(0,0,0,.2)'; rr(-r + 3, -r + 6, r * 2, r * 2, 4); g.fill(); rr(-r, -r, r * 2, r * 2, 4); shape('#7fd3ff', '#2f7fa8'); g.fillStyle = '#e0527c'; g.fillRect(-3.500, -r, 7, r * 2); g.fillRect(-r, -3.500, r * 2, 7); for (const s of [-1, 1]) { ell(s * 6, -r - 2, 6, 4, s * 0.5); shape('#e0527c', '#a8395e', 1); } }
+  else if (b.type === 'piece') { const pulse = 1 + Math.sin(tNow * 4 + b.spin) * 0.04; g.scale(pulse, pulse); ell(0, 3, b.r, b.r); g.fillStyle = '#b8860b'; g.fill(); ell(0, 0, b.r, b.r); shape('#fff6e6', '#f5c542', 3); drawPiece(b.piece, 0.5); }
+  else if (b.type === 'bumper') { ell(0, 3, b.r, b.r); g.fillStyle = '#7a1f3a'; g.fill(); ell(0, 0, b.r, b.r); shape('#e0527c', '#7a1f3a', 2); ell(0, 0, b.r * 0.5, b.r * 0.5); shape(Math.sin(tNow * 5) > 0 ? '#fff6e6' : '#ffd0de', null); }
+  g.restore();
+}
+function symbol(s, t) {
+  if (s === 'coin') { g.save(); g.scale(1.5, 1.5); coinFace(15); g.restore(); }
+  else if (s === 'gem') { g.save(); g.scale(1.6, 1.6); drawBody({ type:'gem', x:0, y:0, r:14, hue:200, fall:0 }); g.restore(); }
+  else if (s === 'tower') { g.save(); g.translate(0, 14); g.scale(1.2, 1.2); drawBody({ type:'tower', x:0, y:0, r:16, stack:7, moved:0, spin:0, fall:0 }); g.restore(); }
+  else if (s === 'walls') { poly(0, -24, 22, -15, 18, 14, 0, 26, -18, 14, -22, -15); shape('#7fd3ff', '#2f7fa8', 2.5); poly(0, -15, 13, -9, 11, 9, 0, 17, -11, 9, -13, -9); shape('#d4f1ff', null); }
+  else { g.save(); g.translate(0, 26); g.scale(0.62, 0.62); drawPig(['tophat', 'bowtie', 'monocle'], t, { happy:true }); g.restore(); }
+}
+function bulbs(x, y, w, h, speed) {
+  const per = 2 * (w + h), n = Math.round(per / 21), step = Math.floor(tNow * speed);
+  for (let i = 0; i < n; i++) { let d = i / n * per, px, py; if (d < w) { px = x + d; py = y; } else if (d < w + h) { px = x + w; py = y + d - w; } else if (d < 2 * w + h) { px = x + w - (d - w - h); py = y + h; } else { px = x; py = y + h - (d - 2 * w - h); }
+    const on = (i + step) % 3 === 0; if (on) { g.fillStyle = 'rgba(255,230,140,.35)'; ell(px, py, 7, 7); g.fill(); } ell(px, py, 3.6, 3.6); g.fillStyle = on ? '#fff3b8' : '#8a6a2a'; g.fill(); }
+}
+function txt(s, x, y, size, color, align = 'center', strokeC) { g.font = '400 ' + size + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif'; g.textAlign = align; g.textBaseline = 'middle'; if (strokeC) { g.lineJoin = 'round'; g.lineWidth = size * 0.22; g.strokeStyle = strokeC; g.strokeText(s, x, y); } g.fillStyle = color; g.fillText(s, x, y); }
+
+function draw() {
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const bg = g.createRadialGradient(W / 2, H * 0.45, 40, W / 2, H * 0.45, Math.max(W, H) * 0.8); bg.addColorStop(0, '#4a1d52'); bg.addColorStop(1, '#190620'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  if (!G) return;
+  g.setTransform(DPR * S, 0, 0, DPR * S, DPR * OX, DPR * OY);
+  const fever = G.fever > 0 || G.slot || G.cele;
+  // cabinet
+  rr(0, 0, LW, LH, 20); shape('#3b1642', '#f5c542', 3);
+  rr(6, 6, LW - 12, HEAD - 14, 14); shape('#24092b', 'rgba(245,197,66,.4)', 1.5);
+  bulbs(8, 8, LW - 16, LH - 16, fever ? 12 : 3);
+
+  // header: the pig being dressed, the outfit list, purse and bank
+  const ru = G.rules, pig = ru.pig;
+  g.save(); ell(62, 62, 44, 44); shape('#ffe9ef', '#f5c542', 3); g.clip(); g.translate(62, 88); g.scale(0.78, 0.78); drawPig(G.got, tNow, { happy:G.got.length > 0, seed:1 }); g.restore();
+  txt(pig.name, 116, 30, 19, '#fff6e6', 'left');
+  pig.pieces.forEach((p, i) => { const x = 130 + i * 37, y = 68, got = G.got.includes(p); ell(x, y, 16, 16); shape(got ? '#fff6e6' : 'rgba(255,246,230,.12)', got ? '#f5c542' : 'rgba(245,197,66,.4)', 2); g.save(); g.translate(x, y); g.globalAlpha = got ? 1 : 0.6; drawPiece(p, 0.36); g.restore(); if (got) { g.strokeStyle = '#3aa76d'; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(x + 6, y + 10); g.lineTo(x + 10, y + 14); g.lineTo(x + 17, y + 5); g.stroke(); } });
+  txt('ROUND ' + (G.n + 1), 116, 102, 13, '#f5c542', 'left');
+  if (ru.tokens) for (let i = 0; i < 3; i++) { g.save(); g.translate(200 + i * 22, 102); g.scale(0.5, 0.5); g.globalAlpha = i < G.tokens ? 1 : 0.28; drawBody({ type:'token', x:0, y:0, r:16, fall:0 }); g.restore(); }
+  g.save(); g.translate(LW - 100, 40); g.scale(0.9, 0.9); coinFace(15); g.restore();
+  txt(String(G.purse), LW - 80, 41, 30, G.purse < 6 ? '#ff8fb0' : '#fff6e6', 'left');
+  g.font = '800 11px Nunito, sans-serif'; g.textAlign = 'right'; g.fillStyle = 'rgba(255,246,230,.7)'; g.fillText('BANKED', LW - 20, 68); txt(G.bank.toLocaleString(), LW - 20, 85, 18, '#f5c542', 'right');
+  if (G.wallsT > 0) { g.font = '800 11px Nunito, sans-serif'; g.textAlign = 'right'; g.fillStyle = '#7fd3ff'; g.fillText('WALLS UP ' + Math.ceil(G.wallsT) + 's', LW - 20, 106); }
+
+  // the bed
+  g.save(); g.translate(BX, BY);
+  g.beginPath(); g.rect(-FR + 6, 0, BW + FR * 2 - 12, BD + TRAY); g.clip();
+  g.fillStyle = '#12051a'; g.fillRect(-FR, 0, BW + FR * 2, BD + TRAY);
+  const felt = g.createLinearGradient(0, 0, 0, BD); felt.addColorStop(0, '#0f5d55'); felt.addColorStop(1, '#1b9484'); g.fillStyle = felt; g.fillRect(0, 0, BW, BD);
+  g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1; for (let y = 170; y < BD; y += 34) { g.beginPath(); g.moveTo(0, y); g.lineTo(BW, y); g.stroke(); }
+  // front lip and tray
+  g.fillStyle = '#f5c542'; g.fillRect(0, BD - 3, BW, 5); const tr = g.createLinearGradient(0, BD, 0, BD + TRAY); tr.addColorStop(0, '#0a0210'); tr.addColorStop(1, '#2a0f33'); g.fillStyle = tr; g.fillRect(-FR, BD + 2, BW + FR * 2, TRAY);
+  txt('PRIZE TRAY', BW / 2, BD + TRAY - 20, 14, 'rgba(245,197,66,.55)');
+  // side rails: solid at the back, open gutters toward the front unless the walls are up
+  const wallCol = G.wallsT > 0 ? (G.wallsT < 4 && Math.sin(tNow * 12) > 0 ? '#2f7fa8' : '#7fd3ff') : null;
+  for (const x of [-FR, BW]) { g.fillStyle = '#6a2d73'; g.fillRect(x, 0, FR, GUTTER_Y); g.fillStyle = '#05010a'; g.fillRect(x, GUTTER_Y, FR, BD - GUTTER_Y); if (wallCol) { g.fillStyle = wallCol; g.fillRect(x === BW ? BW : -5, GUTTER_Y, 5, BD - GUTTER_Y); } }
+  // bodies, back to front
+  const list = G.bodies.slice().sort((a, b) => (a.fall > 0) - (b.fall > 0) || a.y - b.y);
+  for (const b of list) if (!(b.fall > 0)) drawBody(b);
+  // the pusher shelf
+  const pg = g.createLinearGradient(0, 0, 0, G.front); pg.addColorStop(0, '#8d93a6'); pg.addColorStop(1, '#d9dde8'); g.fillStyle = pg; g.fillRect(0, 0, BW, G.front - 10);
+  g.fillStyle = 'rgba(255,255,255,.18)'; for (let x = -40 + (tNow * 20) % 40; x < BW; x += 40) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 14, 0); g.lineTo(x + 14 - 30, G.front - 10); g.lineTo(x - 30, G.front - 10); g.fill(); }
+  g.fillStyle = '#6b7186'; g.fillRect(0, G.front - 10, BW, 10); g.fillStyle = '#f5c542'; g.fillRect(0, G.front - 2, BW, 2);
+  for (const b of list) if (b.fall > 0) drawBody(b);
+  // where the next coin will land
+  if (!G.slot && !G.cele) { g.fillStyle = 'rgba(255,246,230,.8)'; poly(G.aimX - 9, 6, G.aimX + 9, 6, G.aimX, 20); g.fill(); g.setLineDash([3, 6]); g.strokeStyle = 'rgba(255,246,230,.3)'; g.lineWidth = 2; g.beginPath(); g.moveTo(G.aimX, 22); g.lineTo(G.aimX, G.front + 16); g.stroke(); g.setLineDash([]); }
+  for (const f of G.fx) { const k = f.t / f.life, a = clamp(1 - k, 0, 1);
+    if (f.kind === 'fallcoin' || f.kind === 'gutter') { g.save(); g.globalAlpha = a; if (f.kind === 'fallcoin') g.translate(0, k * 46); else g.translate((f.x < 0 ? -1 : 1) * k * 4, k * 10); const sc = 1 - k * 0.45, b = f.b; g.translate(b.x, Math.min(b.y, BD + 6)); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBody(b); g.restore(); }
+    else if (f.kind === 'text') { g.globalAlpha = Math.min(1, a * 2.5); txt(f.text, clamp(f.x, 60, BW - 60), f.y - k * 34, f.size, f.color, 'center', '#24092b'); g.globalAlpha = 1; }
+    else if (f.kind === 'spark') { g.globalAlpha = a; star(f.x, f.y, 6); g.fillStyle = f.c; g.fill(); g.globalAlpha = 1; }
+    else if (f.kind === 'conf') { g.globalAlpha = Math.min(1, a * 4); g.save(); g.translate(f.x, f.y); g.rotate(f.rot + f.t * 6); g.fillStyle = f.c; g.fillRect(-5, -3, 10, 6); g.restore(); g.globalAlpha = 1; }
+  }
+  g.restore();
+  // a won piece flies up to the pig
+  for (const f of G.fx) if (f.kind === 'fly') { const k = f.t / f.life, e = k * k * (3 - 2 * k), x = lerp(BX + f.x, 62, e), y = lerp(BY + BD, 62, e) - Math.sin(e * PI) * 60; g.save(); g.translate(x, y); g.rotate(e * TAU); ell(0, 0, 21, 21); shape('#fff6e6', '#f5c542', 3); drawPiece(f.piece, 0.5); g.restore(); }
+
+  // dancers along the bottom of the bed
+  if (G.danceT > 0) { const k = clamp(Math.min(G.danceT, 0.5) * 2, 0, 1); G.dancers.forEach((d, i) => { const big = i === 0, x = LW / 2 + (i === 0 ? 0 : i === 1 ? -118 : 118), y = BY + BD - 40 + (1 - k) * 220; g.save(); g.translate(x, y - (big ? 40 : 0)); const sc = big ? 1.75 : 1.15; g.scale(sc, sc); drawPig(big && G.cele ? ru.pig.pieces : d.pig.pieces, tNow + i * 0.35, { dance:true, happy:true, seed:i }); g.restore(); }); }
+  if (G.cele) { const k = Math.min(1, G.cele.t * 3), by = BY + 120; g.save(); g.translate(LW / 2, by); g.scale(k * (1 + Math.sin(tNow * 8) * 0.04), k); txt('FABULOUS!', 0, 0, 58, '#f5c542', 'center', '#24092b'); txt(ru.pig.name + ' is dressed', 0, 46, 21, '#fff6e6', 'center', '#24092b'); txt('+15 coins', 0, 74, 18, '#ff8fb0', 'center', '#24092b'); g.restore(); }
+  // bonus spin
+  if (G.slot) { const s = G.slot, k = Math.min(1, s.t * 4) * (s.t > 4.7 ? Math.max(0, (5 - s.t) / 0.3) : 1), cx = LW / 2, cy = BY + 215;
+    g.save(); g.translate(cx, cy); g.scale(k, k);
+    rr(-170, -118, 340, 236, 22); shape('#7a1f3a', '#f5c542', 5); bulbs(-162, -110, 324, 220, 14);
+    txt('BONUS SPIN', 0, -84, 30, '#f5c542', 'center', '#24092b');
+    for (let i = 0; i < 3; i++) { const x = (i - 1) * 104; rr(x - 46, -52, 92, 104, 12); shape('#fff6e6', '#f5c542', 3); g.save(); g.beginPath(); g.rect(x - 44, -50, 88, 100); g.clip(); g.translate(x, 0);
+      if (i >= s.stopped) { const off = (s.t * 9 + i * 0.37) % 1, a = Math.floor(s.t * 9 + i * 1.7) % 5; g.save(); g.translate(0, off * 100 - 100); symbol(SYMS[(a + 1) % 5], tNow); g.restore(); g.save(); g.translate(0, off * 100); symbol(SYMS[a], tNow); g.restore(); }
+      else { const since = s.t - s.stops[i], b = since < 0.25 ? Math.sin(since / 0.25 * PI) * -10 : 0; g.translate(0, b); symbol(s.reels[i], tNow); }
+      g.restore(); }
+    if (s.msg) txt(s.msg, 0, 86, s.msg.length > 14 ? 22 : 28, '#fff6e6', 'center', '#24092b');
+    g.restore(); }
+  if (G.banner && !G.cele && !G.slot) { const b = G.banner, k = Math.min(1, b.t * 4) * Math.min(1, (b.life - b.t) * 3), y = BY + 215; g.save(); g.globalAlpha = clamp(k, 0, 1); g.translate(LW / 2, y); rr(-168, -62, 336, 124, 18); shape('rgba(36,9,43,.9)', '#f5c542', 3); txt(b.big, 0, -30, 30, '#f5c542'); txt(b.mid, 0, 4, 22, '#fff6e6'); g.font = '800 14px Nunito, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#ffd0de'; g.fillText(b.small, 0, 36); g.restore(); }
+}
+
+/* ---------- loop & input ---------- */
+function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); const top = 46; S = Math.min(W / (LW + 8), (H - top - 6) / LH); OX = (W - LW * S) / 2; OY = top + Math.max(0, (H - top - 6 - LH * S) / 2); }
+let last = 0; function frame(ts) { const dt = Math.min(0.033, (ts - last) / 1000 || 0); last = ts; update(dt); draw(); if (!playing) pigPreview(); requestAnimationFrame(frame); }
+const toBoardX = cx => clamp((cx - OX) / S - BX, R.coin + 2, BW - R.coin - 2);
+cv.addEventListener('pointerdown', e => { e.preventDefault(); if (!playing) return; if (G.slot && G.slot.stopped < 3) { G.slot.stops = G.slot.stops.map((s, i) => Math.min(s, G.slot.t + 0.1 + i * 0.25)); return; } G.aimX = toBoardX(e.clientX); G.held = true; G.holdT = 0.32; playerDrop(G.aimX); try { cv.setPointerCapture(e.pointerId); } catch (er) {} });
+cv.addEventListener('pointermove', e => { if (G && (e.pointerType === 'mouse' || G.held)) G.aimX = toBoardX(e.clientX); });
+for (const ev of ['pointerup', 'pointercancel']) cv.addEventListener(ev, () => { if (G) G.held = false; });
+addEventListener('keydown', e => { if (!playing) return; if (e.key === 'ArrowLeft') G.aimX = clamp(G.aimX - 24, 17, BW - 17); else if (e.key === 'ArrowRight') G.aimX = clamp(G.aimX + 24, 17, BW - 17); else if (e.key === ' ' || e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); playerDrop(G.aimX); } });
+addEventListener('resize', resize);
+// phones zoom on double taps and pinches; block every route to it
+cv.addEventListener('touchstart', e => e.preventDefault(), { passive:false });
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive:false });
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) document.addEventListener(ev, e => e.preventDefault(), { passive:false });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+const pcv = $('pigcv').getContext('2d');
+function pigPreview() { const o = g; g = pcv; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, 300, 300); g.setTransform(2.3, 0, 0, 2.3, 150, 168); drawPig(['tophat', 'bowtie', 'monocle', 'jacket'], tNow, { dance:true, happy:true }); g = o; }
+function start() { audio(); newGame(); playing = true; $('start').hidden = true; $('cl').hidden = false; $('cr').hidden = false; SFX.oink(); }
+$('play').addEventListener('click', start);
+const sb = $('sound'), paint = () => { sb.textContent = save.sound ? 'Sound on' : 'Sound off'; sb.setAttribute('aria-pressed', String(save.sound)); };
+sb.addEventListener('click', () => { save.sound = !save.sound; persist(); paint(); if (save.sound) { audio(); SFX.item(); } });
+paint(); resize(); requestAnimationFrame(frame);
+window.__pusher = { get G() { return G; }, start, update, playerDrop, save, PIECES, PIGS, startSlot, draw:{ pig:(ctx, w, t, o) => { const q = g; g = ctx; drawPig(w, t, o); g = q; }, piece:(ctx, n, s) => { const q = g; g = ctx; drawPiece(n, s); g = q; } } };   // for tests
+})();
+</script>
+</body>
+</html>
