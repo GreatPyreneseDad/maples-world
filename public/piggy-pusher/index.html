@@ -229,7 +229,7 @@ function dropAt(type, x, extra, free) {
   const b = body(type, clamp(x, R[type] + 2, BW - R[type] - 2), 0, extra); b.fall = 0.28; b.y = G.front + b.r + 1 + rnd(0, 6); G.bodies.push(b); return b;
 }
 function playerDrop(x) {
-  if (!playing || G.slot || G.cele || G.dropCd > 0) return; audio();
+  if (!playing || G.slot || G.cele || G.hold || G.dropCd > 0) return; audio();
   if (G.purse <= 0) { fxText(BW / 2, 120, 'Coins refill soon', '#fff6e6'); G.dropCd = 0.4; return; }
   G.purse--; G.dropCd = 0.16; G.since++; dropAt('coin', x); SFX.drop();
   if (G.since >= G.rules.prizeEvery) { G.since = 0; prize(); }
@@ -301,6 +301,86 @@ function paySlot() {
 }
 function dance(life) { const seen = PIGS.slice(0, Math.min(PIGS.length, G.n + 1)); G.dancers = [0, 1, 2].map(i => ({ pig:seen[(G.n - i + seen.length * 3) % seen.length], i })); G.danceT = life; }
 
+
+/* ---------- Hog Heaven: the 6 x 6 hold-and-spin bonus after every round ---------- */
+// Three spins. Every pig that lands sticks and puts the spins back to three. Fill all 36 for the Grand.
+const HN = 6, HCELL = 54, HGAP = 4, HGRID = HN * HCELL + (HN - 1) * HGAP;
+const TIERS = [
+  { p:0.02, v:250, tier:'MAJOR', wear:['crown', 'cape'] },
+  { p:0.06, v:100, tier:'MINOR', wear:['tiara', 'pearls'] },
+  { p:0.12, v:50,  tier:'MINI',  wear:['cowboy', 'bandana'] },
+];
+function holdPig() {
+  let r = Math.random(); for (const t of TIERS) { if (r < t.p) return { v:t.v, tier:t.tier, wear:t.wear, born:tNow }; r -= t.p; }
+  return { v:pick([5, 10, 10, 15, 20, 25]), wear:[pick(['tophat', 'sunhat', 'chefhat', 'bowtie', 'shades', 'moustache'])], born:tNow };
+}
+function startHold() {
+  const h = G.hold = { cells:Array(HN * HN).fill(null), spins:3, state:'intro', t:0, total:0, count:0, flash:0, shake:0, stops:null, landed:0, fast:0, spinNo:0 };
+  const idx = [...Array(HN * HN).keys()].sort(() => Math.random() - 0.5).slice(0, 4); for (const i of idx) h.cells[i] = holdPig();
+  SFX.fanfare(); SFX.oink(); G.held = false;
+}
+function holdSpin(h) {
+  const n = h.cells.filter(Boolean).length, p = 0.04 + 0.09 * (n / 36) * (n / 36);
+  h.state = 'spin'; h.t = 0; h.landed = 0; h.spinNo++;
+  h.stops = h.cells.map((c, i) => c ? null : { at:0.3 + (i % HN) * 0.07 + Math.floor(i / HN) * 0.012, pig:Math.random() < p ? holdPig() : null, done:false, blank:Math.random() * 4 | 0 });
+}
+function updateHold(dt) {
+  const h = G.hold; h.fast = Math.max(0, h.fast - dt); const k = h.fast > 0 ? 2.6 : 1; h.t += dt * k; h.flash = Math.max(0, h.flash - dt); h.shake = Math.max(0, h.shake - dt);
+  if (h.state === 'intro') { if (h.t > 2) holdSpin(h); }
+  else if (h.state === 'spin') {
+    h.tick = (h.tick || 0) - dt; if (h.tick <= 0) { h.tick = 0.08; SFX.tick(); }
+    let pending = false;
+    h.stops.forEach((s, i) => { if (!s || s.done) return; if (h.t >= s.at) { s.done = true; if (s.pig) { s.pig.born = tNow; h.cells[i] = s.pig; h.landed++; h.shake = 0.18; SFX.stop(); SFX.oink(); if (s.pig.tier) SFX.item(); } } else pending = true; });
+    if (!pending && h.t > 0.85) {
+      if (h.cells.every(Boolean)) { h.state = 'count'; h.t = 0; h.grand = true; SFX.fanfare(); }
+      else if (h.landed > 0) { h.spins = 3; h.flash = 0.8; h.state = 'pause'; h.t = 0; [0, 4, 7].forEach((st, i) => tone('triangle', 784 * Math.pow(2, st / 12), 784 * Math.pow(2, st / 12), 0.14, 0.14, i * 0.06)); }
+      else { h.spins--; h.state = 'pause'; h.t = 0; tone('sine', 300, 220, 0.18, 0.1); }
+    }
+  }
+  else if (h.state === 'pause') { if (h.t > 0.38) { if (h.spins <= 0) { h.state = 'count'; h.t = 0; } else holdSpin(h); } }
+  else if (h.state === 'count') {
+    const pigs = h.cells.map((c, i) => c && i).filter(i => i !== null && i !== false && h.cells[i]);
+    while (h.count < pigs.length && h.t > 0.5 + h.count * 0.11) { const c = h.cells[pigs[h.count]]; c.paid = tNow; h.total += c.v; tone('triangle', 520 * Math.pow(2, Math.min(h.count, 30) / 12), 520 * Math.pow(2, Math.min(h.count, 30) / 12), 0.1, 0.12); h.count++; }
+    if (h.count >= pigs.length && h.t > 0.9 + pigs.length * 0.11) { if (h.grand) h.total += 1000; h.state = 'total'; h.t = 0; G.purse += h.total; G.bank += h.total; G.fever = 5; SFX.fanfare(); SFX.oink(); dance(4.5); save.purse = G.purse; save.bank = G.bank; persist(); }
+  }
+  else if (h.state === 'total') {
+    if (Math.random() < dt * 40) G.fx.push({ kind:'conf', x:rnd(-FR, BW + FR), y:-HEAD, vx:rnd(-30, 30), vy:rnd(140, 260), t:0, life:4, c:pick(['#f5c542', '#ff8fb0', '#7fd3ff', '#9bdb7a', '#c9a8ff']), rot:rnd(0, TAU) });
+    if (h.t > 4.6) { const win = h.total; G.hold = null; shower(Math.min(40, 10 + Math.floor(win / 20)), true); G.n++; startRound(false); }
+  }
+}
+function blankSym(k) {   // what the reels show when it is not a pig
+  if (k === 0) { ell(0, 2, 13, 12); shape('#e2433b'); g.strokeStyle = '#5a8f2a'; g.lineWidth = 2.5; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, -10); g.quadraticCurveTo(3, -16, 8, -15); g.stroke(); }
+  else if (k === 1) { ell(0, 0, 9, 16); shape('#f5c542'); g.strokeStyle = 'rgba(160,110,10,.5)'; g.lineWidth = 1; for (const y of [-8, -2, 4, 10]) { g.beginPath(); g.moveTo(-7, y); g.lineTo(7, y); g.stroke(); } poly(-9, 6, -14, 18, -2, 14); shape('#6dbb4f'); poly(9, 6, 14, 18, 2, 14); shape('#6dbb4f'); }
+  else if (k === 2) { poly(-8, -12, 8, -12, 0, 17); shape('#f08a3c'); for (const s of [-1, 0, 1]) { g.strokeStyle = '#5a8f2a'; g.lineWidth = 2.5; g.lineCap = 'round'; g.beginPath(); g.moveTo(s * 3, -12); g.lineTo(s * 7, -20); g.stroke(); } }
+  else { g.beginPath(); for (let i = 0; i <= 16; i++) { const a = i / 16 * TAU, r = 14 + (i % 2) * 4; g.lineTo(Math.cos(a) * r, Math.sin(a) * r * 0.7 + 3); } g.closePath(); shape('#7a5236'); ell(-4, 0, 3, 2); shape('#9a7150', null); }
+}
+function drawHold() {
+  const h = G.hold, px = (LW - HGRID) / 2, top = BY + 14, gy = top + 62, intro = h.state === 'intro' ? Math.min(1, h.t * 2.5) : 1;
+  g.save(); if (h.shake > 0) g.translate(rnd(-2, 2), rnd(-2, 2));
+  g.translate(LW / 2, BY + BD / 2); g.scale(intro, intro); g.translate(-LW / 2, -(BY + BD / 2));
+  rr(px - 8, top - 6, HGRID + 16, 62 + HGRID + 46, 16); shape('#5a1030', '#f5c542', 4); bulbs(px - 2, top, HGRID + 4, 62 + HGRID + 34, 16);
+  txt('HOG HEAVEN', LW / 2, top + 22, 30, '#f5c542', 'center', '#24092b');
+  // spins left
+  for (let i = 0; i < 3; i++) { const x = px + 26 + i * 26, y = top + 50, on = i < h.spins; ell(x, y, 9, 9); shape(on ? (h.flash > 0 ? '#fff6e6' : '#ff8fb0') : 'rgba(255,255,255,.12)', '#f5c542', 2); }
+  g.font = '800 11px Nunito, sans-serif'; g.textAlign = 'left'; g.fillStyle = '#ffd0de'; g.textBaseline = 'middle'; g.fillText(h.flash > 0 ? 'SPINS RESET!' : 'SPINS LEFT', px + 100, top + 51);
+  txt(h.total ? h.total.toLocaleString() : '', px + HGRID - 4, top + 50, 22, '#f5c542', 'right', '#24092b');
+  for (let i = 0; i < HN * HN; i++) {
+    const cx = px + (i % HN) * (HCELL + HGAP) + HCELL / 2, cy = gy + Math.floor(i / HN) * (HCELL + HGAP) + HCELL / 2, c = h.cells[i], s = h.stops && h.stops[i];
+    rr(cx - HCELL / 2, cy - HCELL / 2, HCELL, HCELL, 8); shape(c ? (c.tier ? '#fff1b0' : '#ffe9ef') : '#2a0a1c', c ? '#f5c542' : 'rgba(245,197,66,.35)', c ? 2.5 : 1.2);
+    g.save(); g.beginPath(); g.rect(cx - HCELL / 2 + 1, cy - HCELL / 2 + 1, HCELL - 2, HCELL - 2); g.clip();
+    if (c) { const age = tNow - c.born, pop = age < 0.3 ? 1 + Math.sin(age / 0.3 * PI) * 0.35 : 1, paid = c.paid && tNow - c.paid < 0.25 ? 1.18 : 1;
+      g.translate(cx, cy + 22); g.scale(0.46 * pop * paid, 0.46 * pop * paid); drawPig(c.wear, tNow + i, { happy:true, seed:i }); }
+    else if (h.state === 'spin' && s && !s.done) { const off = (h.t * 7 + i * 0.31) % 1, a = Math.floor(h.t * 7 + i * 1.3) % 4; g.globalAlpha = 0.75; g.save(); g.translate(cx, cy + off * HCELL - HCELL); g.scale(0.9, 1.25); blankSym((a + 1) % 4); g.restore(); g.save(); g.translate(cx, cy + off * HCELL); g.scale(0.9, 1.25); blankSym(a); g.restore(); }
+    else if (s && s.done && !s.pig) { g.globalAlpha = 0.3; g.translate(cx, cy); blankSym(s.blank); }
+    g.restore();
+    if (c) { const big = c.tier; rr(cx - 23, cy + 12, 46, 14, 7); shape(big ? '#e0527c' : '#f5c542', '#24092b', 1.2); g.font = '400 ' + (big ? 10 : 12) + 'px "Lilita One", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = big ? '#fff' : '#24092b'; g.fillText(big ? c.tier + ' ' + c.v : String(c.v), cx, cy + 19.5); }
+  }
+  g.font = '800 12px Nunito, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#ffd0de'; g.textBaseline = 'middle';
+  g.fillText(h.state === 'intro' ? '3 spins. Every pig that lands resets them.' : h.state === 'count' || h.state === 'total' ? 'Counting the pigs' : 'Fill all 36 for the GRAND 1,000 · tap to hurry', LW / 2, gy + HGRID + 18);
+  if (h.state === 'total') { const k = Math.min(1, h.t * 3); g.save(); g.translate(LW / 2, gy + HGRID / 2); g.scale(k * (1 + Math.sin(tNow * 8) * 0.04), k); rr(-165, -70, 330, 140, 20); shape('rgba(36,9,43,.92)', '#f5c542', 4); txt(h.grand ? 'GRAND HOG HEAVEN!' : h.total >= 400 ? 'GOING HAM!' : 'BONUS WIN', 0, -34, h.grand ? 28 : 34, '#ff8fb0', 'center', '#24092b'); txt('+' + Math.round(h.total * Math.min(1, h.t / 1.2)).toLocaleString(), 0, 18, 54, '#f5c542', 'center', '#24092b'); g.restore(); }
+  g.restore();
+}
+
 /* ---------- update ---------- */
 function update(dt) {
   tNow += dt; if (!playing || !G) return;
@@ -308,13 +388,14 @@ function update(dt) {
   if (G.banner && (G.banner.t += dt) > G.banner.life) G.banner = null;
   // purse refills slowly so nobody is ever stuck
   if (G.purse < 60) { G.regenT += dt; if (G.regenT > 0.35) { G.regenT = 0; G.purse++; } } else G.regenT = 0;
-  if (G.held && !G.slot && !G.cele) { G.holdT -= dt; if (G.holdT <= 0) { playerDrop(G.aimX); G.holdT = 0.2; } }
+  if (G.held && !G.slot && !G.cele && !G.hold) { G.holdT -= dt; if (G.holdT <= 0) { playerDrop(G.aimX); G.holdT = 0.2; } }
   // things on their way down the chute
   for (const q of G.queue) q.t -= dt;
   for (const q of G.queue.filter(q => q.t <= 0)) { if (q.slot) startSlot(); else if (q.cele) celebrate(); else if (q.type === 'piece') dropAt('piece', rnd(60, BW - 60), { piece:q.piece }); else spawn(q.type); }
   G.queue = G.queue.filter(q => q.t > 0);
   if (G.slot) { const s = G.slot; s.t += dt; if (s.stopped < 3) { s.tick -= dt; if (s.tick <= 0) { s.tick = 0.07; SFX.tick(); } if (s.t >= s.stops[s.stopped]) { s.stopped++; SFX.stop(); } } if (s.stopped === 3 && !s.paid && s.t > 2.9) { s.paid = true; paySlot(); } if (s.t > 5) G.slot = null; }
-  if (G.cele) { G.cele.t += dt; if (Math.random() < dt * 30) G.fx.push({ kind:'conf', x:rnd(-FR, BW + FR), y:-HEAD, vx:rnd(-30, 30), vy:rnd(140, 260), t:0, life:4, c:pick(['#f5c542', '#ff8fb0', '#7fd3ff', '#9bdb7a', '#c9a8ff']), rot:rnd(0, TAU) }); if (G.cele.t > 6) { G.cele = null; G.n++; startRound(false); } }
+  if (G.cele) { G.cele.t += dt; if (Math.random() < dt * 30) G.fx.push({ kind:'conf', x:rnd(-FR, BW + FR), y:-HEAD, vx:rnd(-30, 30), vy:rnd(140, 260), t:0, life:4, c:pick(['#f5c542', '#ff8fb0', '#7fd3ff', '#9bdb7a', '#c9a8ff']), rot:rnd(0, TAU) }); if (G.cele.t > 6) { G.cele = null; startHold(); } }
+  if (G.hold) updateHold(dt);
 
   const pf = G.front; G.phase += dt * TAU / G.rules.period; G.front = (PUSH_MIN + PUSH_MAX) / 2 + Math.sin(G.phase) * (PUSH_MAX - PUSH_MIN) / 2; const pv = G.front - pf;
   for (const b of G.bodies) if (b.fall > 0) { b.fall -= dt; if (b.fall <= 0) { b.fall = 0; b.y = Math.max(b.y, G.front + b.r); SFX.clink(); } }
@@ -377,7 +458,7 @@ function draw() {
   const bg = g.createRadialGradient(W / 2, H * 0.45, 40, W / 2, H * 0.45, Math.max(W, H) * 0.8); bg.addColorStop(0, '#4a1d52'); bg.addColorStop(1, '#190620'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
   if (!G) return;
   g.setTransform(DPR * S, 0, 0, DPR * S, DPR * OX, DPR * OY);
-  const fever = G.fever > 0 || G.slot || G.cele;
+  const fever = G.fever > 0 || G.slot || G.cele || G.hold;
   // cabinet
   rr(0, 0, LW, LH, 20); shape('#3b1642', '#f5c542', 3);
   rr(6, 6, LW - 12, HEAD - 14, 14); shape('#24092b', 'rgba(245,197,66,.4)', 1.5);
@@ -416,7 +497,7 @@ function draw() {
   g.fillStyle = '#6b7186'; g.fillRect(0, G.front - 10, BW, 10); g.fillStyle = '#f5c542'; g.fillRect(0, G.front - 2, BW, 2);
   for (const b of list) if (b.fall > 0) drawBody(b);
   // where the next coin will land
-  if (!G.slot && !G.cele) { g.fillStyle = 'rgba(255,246,230,.8)'; poly(G.aimX - 9, 6, G.aimX + 9, 6, G.aimX, 20); g.fill(); g.setLineDash([3, 6]); g.strokeStyle = 'rgba(255,246,230,.3)'; g.lineWidth = 2; g.beginPath(); g.moveTo(G.aimX, 22); g.lineTo(G.aimX, G.front + 16); g.stroke(); g.setLineDash([]); }
+  if (!G.slot && !G.cele && !G.hold) { g.fillStyle = 'rgba(255,246,230,.8)'; poly(G.aimX - 9, 6, G.aimX + 9, 6, G.aimX, 20); g.fill(); g.setLineDash([3, 6]); g.strokeStyle = 'rgba(255,246,230,.3)'; g.lineWidth = 2; g.beginPath(); g.moveTo(G.aimX, 22); g.lineTo(G.aimX, G.front + 16); g.stroke(); g.setLineDash([]); }
   for (const f of G.fx) { const k = f.t / f.life, a = clamp(1 - k, 0, 1);
     if (f.kind === 'fallcoin' || f.kind === 'gutter') { g.save(); g.globalAlpha = a; if (f.kind === 'fallcoin') g.translate(0, k * 46); else g.translate((f.x < 0 ? -1 : 1) * k * 4, k * 10); const sc = 1 - k * 0.45, b = f.b; g.translate(b.x, Math.min(b.y, BD + 6)); g.scale(sc, sc); g.translate(-b.x, -b.y); drawBody(b); g.restore(); }
     else if (f.kind === 'text') { g.globalAlpha = Math.min(1, a * 2.5); txt(f.text, clamp(f.x, 60, BW - 60), f.y - k * 34, f.size, f.color, 'center', '#24092b'); g.globalAlpha = 1; }
@@ -441,14 +522,15 @@ function draw() {
       g.restore(); }
     if (s.msg) txt(s.msg, 0, 86, s.msg.length > 14 ? 22 : 28, '#fff6e6', 'center', '#24092b');
     g.restore(); }
-  if (G.banner && !G.cele && !G.slot) { const b = G.banner, k = Math.min(1, b.t * 4) * Math.min(1, (b.life - b.t) * 3), y = BY + 215; g.save(); g.globalAlpha = clamp(k, 0, 1); g.translate(LW / 2, y); rr(-168, -62, 336, 124, 18); shape('rgba(36,9,43,.9)', '#f5c542', 3); txt(b.big, 0, -30, 30, '#f5c542'); txt(b.mid, 0, 4, 22, '#fff6e6'); g.font = '800 14px Nunito, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#ffd0de'; g.fillText(b.small, 0, 36); g.restore(); }
+  if (G.hold) drawHold();
+  if (G.banner && !G.cele && !G.slot && !G.hold) { const b = G.banner, k = Math.min(1, b.t * 4) * Math.min(1, (b.life - b.t) * 3), y = BY + 215; g.save(); g.globalAlpha = clamp(k, 0, 1); g.translate(LW / 2, y); rr(-168, -62, 336, 124, 18); shape('rgba(36,9,43,.9)', '#f5c542', 3); txt(b.big, 0, -30, 30, '#f5c542'); txt(b.mid, 0, 4, 22, '#fff6e6'); g.font = '800 14px Nunito, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#ffd0de'; g.fillText(b.small, 0, 36); g.restore(); }
 }
 
 /* ---------- loop & input ---------- */
 function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); const top = 46; S = Math.min(W / (LW + 8), (H - top - 6) / LH); OX = (W - LW * S) / 2; OY = top + Math.max(0, (H - top - 6 - LH * S) / 2); }
 let last = 0; function frame(ts) { const dt = Math.min(0.033, (ts - last) / 1000 || 0); last = ts; update(dt); draw(); if (!playing) pigPreview(); requestAnimationFrame(frame); }
 const toBoardX = cx => clamp((cx - OX) / S - BX, R.coin + 2, BW - R.coin - 2);
-cv.addEventListener('pointerdown', e => { e.preventDefault(); if (!playing) return; if (G.slot && G.slot.stopped < 3) { G.slot.stops = G.slot.stops.map((s, i) => Math.min(s, G.slot.t + 0.1 + i * 0.25)); return; } G.aimX = toBoardX(e.clientX); G.held = true; G.holdT = 0.32; playerDrop(G.aimX); try { cv.setPointerCapture(e.pointerId); } catch (er) {} });
+cv.addEventListener('pointerdown', e => { e.preventDefault(); if (!playing) return; if (G.hold) { audio(); G.hold.fast = 1.2; return; } if (G.slot && G.slot.stopped < 3) { G.slot.stops = G.slot.stops.map((s, i) => Math.min(s, G.slot.t + 0.1 + i * 0.25)); return; } G.aimX = toBoardX(e.clientX); G.held = true; G.holdT = 0.32; playerDrop(G.aimX); try { cv.setPointerCapture(e.pointerId); } catch (er) {} });
 cv.addEventListener('pointermove', e => { if (G && (e.pointerType === 'mouse' || G.held)) G.aimX = toBoardX(e.clientX); });
 for (const ev of ['pointerup', 'pointercancel']) cv.addEventListener(ev, () => { if (G) G.held = false; });
 addEventListener('keydown', e => { if (!playing) return; if (e.key === 'ArrowLeft') G.aimX = clamp(G.aimX - 24, 17, BW - 17); else if (e.key === 'ArrowRight') G.aimX = clamp(G.aimX + 24, 17, BW - 17); else if (e.key === ' ' || e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); playerDrop(G.aimX); } });
@@ -466,7 +548,7 @@ $('play').addEventListener('click', start);
 const sb = $('sound'), paint = () => { sb.textContent = save.sound ? 'Sound on' : 'Sound off'; sb.setAttribute('aria-pressed', String(save.sound)); };
 sb.addEventListener('click', () => { save.sound = !save.sound; persist(); paint(); if (save.sound) { audio(); SFX.item(); } });
 paint(); resize(); requestAnimationFrame(frame);
-window.__pusher = { get G() { return G; }, start, update, playerDrop, save, PIECES, PIGS, startSlot, draw:{ pig:(ctx, w, t, o) => { const q = g; g = ctx; drawPig(w, t, o); g = q; }, piece:(ctx, n, s) => { const q = g; g = ctx; drawPiece(n, s); g = q; } } };   // for tests
+window.__pusher = { get G() { return G; }, start, update, playerDrop, save, PIECES, PIGS, startSlot, startHold, draw:{ pig:(ctx, w, t, o) => { const q = g; g = ctx; drawPig(w, t, o); g = q; }, piece:(ctx, n, s) => { const q = g; g = ctx; drawPiece(n, s); g = q; } } };   // for tests
 })();
 </script>
 </body>
