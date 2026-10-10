@@ -31,7 +31,7 @@ test.describe('chemistry contract', () => {
 });
 
 async function boot(page: Page) {
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.drops !== undefined, null, { timeout: 60_000 });
 }
 

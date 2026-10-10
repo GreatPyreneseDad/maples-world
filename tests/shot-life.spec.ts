@@ -2,7 +2,7 @@ import { test } from '@playwright/test';
 
 test('screenshots: life with goggles, and the pond under the microscope', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.life !== undefined, null, { timeout: 60_000 });
   await page.evaluate(async () => {
     const g = (window as any).game;

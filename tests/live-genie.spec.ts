@@ -7,7 +7,7 @@ test('the real genie answers, builds, and iterates on its own build', async ({ p
   test.setTimeout(180_000);
   const errors: string[] = [];
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.agent !== undefined, null, { timeout: 90_000 });
   const status = await page.evaluate(() => (window as any).game.overlayStatus.textContent);
   console.log('overlay:', status);
@@ -34,7 +34,7 @@ test('the real genie answers, builds, and iterates on its own build', async ({ p
 
 test('an oversized wish (your birthday one) completes or fails gracefully, and the next wish still works', async ({ page }) => {
   test.setTimeout(300_000);
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.agent !== undefined, null, { timeout: 90_000 });
   const r = await page.evaluate(`(async () => {
     const g = window.game; g.overlay.hidden = true; g.summon();

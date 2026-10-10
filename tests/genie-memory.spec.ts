@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 async function boot(page: Page) {
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.agent !== undefined, null, { timeout: 60_000 });
   await page.evaluate(() => { (window as any).game.overlay.hidden = true; });
 }
@@ -54,7 +54,7 @@ test('conversation and notes survive a reload; the lamp greets a returning playe
 });
 
 test('a history poisoned by an unanswered tool_use is repaired on load and the genie keeps working', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.agent !== undefined, null, { timeout: 60_000 });
   const n = await page.evaluate(() => {
     const g = (window as any).game;

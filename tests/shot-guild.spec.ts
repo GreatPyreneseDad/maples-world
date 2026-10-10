@@ -2,7 +2,7 @@ import { test } from '@playwright/test';
 
 test('screenshots: quests in the world, and the Guild hall', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.guild !== undefined, null, { timeout: 60_000 });
   await page.evaluate(() => {
     const g = (window as any).game;

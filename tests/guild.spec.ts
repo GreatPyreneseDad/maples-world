@@ -13,7 +13,7 @@ test('every quest animal has a real, obtainable favourite food (or is domestic w
 });
 
 async function boot(page: Page) {
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.guild !== undefined, null, { timeout: 60_000 });
   await page.evaluate(() => {
     const g = (window as any).game; g.life.settle(g.player.pos); g.overlay.hidden = true;

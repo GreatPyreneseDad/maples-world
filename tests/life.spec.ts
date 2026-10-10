@@ -21,7 +21,7 @@ test.describe('taxonomy registry', () => {
 });
 
 async function boot(page: Page) {
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.life !== undefined, null, { timeout: 60_000 });
   // Normal play spawns one column per frame; tests settle everything at once.
   await page.evaluate(() => { const g = (window as any).game; g.life.settle(g.player.pos); });

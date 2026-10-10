@@ -2,7 +2,7 @@ import { test } from '@playwright/test';
 
 test('screenshots: atoms spilling from broken blocks, and the Lab', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.drops !== undefined, null, { timeout: 60_000 });
   await page.evaluate(() => {
     const g = (window as any).game;

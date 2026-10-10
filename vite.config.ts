@@ -6,6 +6,8 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: true,
     rollupOptions: {
+      // Multi-page: the games shelf at /, the sandbox at /world/. Static games live in public/.
+      input: { home: 'index.html', world: 'world/index.html' },
       output: {
         manualChunks(id: string) { if (id.includes('node_modules/three')) return 'three'; if (id.includes('@supabase')) return 'supabase'; },
       },

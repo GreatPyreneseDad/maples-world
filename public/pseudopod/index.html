@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pseudopod · Maple's World</title>
+<meta name="description" content="You are one amoeba in a drop of pond water. Engulf what is smaller, avoid predators and parasites, and grow.">
+<meta property="og:title" content="Pseudopod">
+<meta property="og:description" content="A top-down amoeba survival game. Eat, grow, and do not get eaten.">
+<meta property="og:url" content="https://maplesworld.org/pseudopod/">
+<meta name="theme-color" content="#041217">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='15' cy='17' r='10' fill='%23f2c14e'/%3E%3Ccircle cx='25' cy='8' r='4' fill='%23f2c14e'/%3E%3C/svg%3E">
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one full-bleed microscope field; instrument readouts pinned to the corners; cards only for start / pause / end. */
+:root{
+  color-scheme: dark;
+  --brine:#041217;        /* field background */
+  --brine-2:#0b2a31;      /* lit centre of the dish */
+  --glass:#bfe9e4;        /* text, reticle lines */
+  --glass-dim:#6f9c9b;    /* secondary text */
+  --plasm:#f2c14e;        /* you */
+  --prey:#8fd694;         /* food */
+  --hunter:#ff6b4a;       /* predators */
+  --parasite:#ff5fb7;     /* parasites */
+  --panel:rgba(4,22,27,.86);
+  --line:rgba(191,233,228,.18);
+  --display:"Fraunces", "Iowan Old Style", Georgia, serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+html,body{height:100%}
+body{background:var(--brine);color:var(--glass);font-family:var(--mono);font-size:13px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#stage{position:relative;height:100%;width:100%;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+.hud{position:absolute;pointer-events:none;display:flex;flex-direction:column;gap:6px;font-variant-numeric:tabular-nums;text-shadow:0 1px 6px var(--brine)}
+.hud.tl{top:14px;left:16px}
+.hud.tr{top:14px;right:16px;align-items:flex-end;text-align:right}
+.hud.bl{bottom:14px;left:16px}
+.label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--glass-dim)}
+.big{font-family:var(--display);font-size:30px;font-weight:500;line-height:1;color:var(--plasm)}
+.big small{font-family:var(--mono);font-size:12px;color:var(--glass-dim);margin-left:4px}
+.row{display:flex;gap:14px}
+.status{color:var(--parasite);min-height:1.3em}
+#bar{height:2px;background:var(--glass);margin-top:3px}
+#toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-family:var(--display);font-style:italic;font-size:22px;text-align:center;max-width:calc(100% - 32px);pointer-events:none;opacity:0;transition:opacity .4s;text-shadow:0 2px 12px var(--brine)}
+#toast.on{opacity:1}
+
+.veil{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-inline:16px;padding-block:16px;background:radial-gradient(circle at 50% 45%,rgba(4,18,23,.55),rgba(4,18,23,.92));overflow-y:auto}
+[hidden]{display:none!important}
+html,body{margin:0}
+*{box-sizing:border-box}
+.home{color:var(--glass-dim);text-decoration:none;font-size:12px;align-self:flex-start}
+.home:hover,.home:focus-visible{color:var(--plasm)}
+.card{width:min(560px,100%);display:flex;flex-direction:column;gap:18px;margin:auto}
+h1{font-family:var(--display);font-weight:300;font-style:italic;font-size:clamp(44px,11vw,84px);line-height:.95;margin:0;color:var(--plasm);text-wrap:balance}
+h2{font-family:var(--display);font-weight:400;font-style:italic;font-size:clamp(30px,7vw,44px);margin:0;line-height:1.05;text-wrap:balance}
+p{margin:0;line-height:1.55;color:var(--glass);max-width:60ch}
+.guide{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;border-top:1px solid var(--line);padding-top:14px}
+.guide div{min-width:0;display:flex;flex-direction:column;gap:4px;line-height:1.45;color:var(--glass-dim)}
+.guide b{font-weight:500;letter-spacing:.12em;text-transform:uppercase;font-size:10px}
+.g-prey b{color:var(--prey)} .g-hunt b{color:var(--hunter)} .g-para b{color:var(--parasite)}
+.keys{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--glass-dim)}
+kbd{font-family:var(--mono);font-size:12px;color:var(--glass);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 6px;margin-right:4px}
+button{font-family:var(--mono);font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--brine);background:var(--plasm);border:0;border-radius:999px;padding:13px 26px;cursor:pointer;align-self:flex-start}
+button:hover{filter:brightness(1.1)}
+button:focus-visible{outline:2px solid var(--glass);outline-offset:3px}
+.stats{display:flex;flex-wrap:wrap;gap:10px 28px}
+.stats .big{color:var(--glass)}
+#reach{position:absolute;right:20px;bottom:calc(24px + env(safe-area-inset-bottom,0px));width:84px;height:84px;padding:0;border-radius:50%;background:rgba(242,193,78,.2);color:var(--plasm);border:1.5px solid var(--plasm);font-size:11px}
+@media (hover:hover) and (pointer:fine){#reach{display:none}}
+@media (max-width:520px){.guide{grid-template-columns:1fr}.hud.bl{display:none}}
+</style>
+
+<div id="stage">
+  <canvas id="c"></canvas>
+
+  <div class="hud tl">
+    <div><div class="label">Cell diameter</div><div class="big"><span id="size">500</span><small>µm</small></div></div>
+    <div class="status" id="status"></div>
+  </div>
+  <div class="hud tr">
+    <div class="row"><div><div class="label">Engulfed</div><div id="eaten">0</div></div><div><div class="label">Alive</div><div id="time">0:00</div></div></div>
+    <div><div class="label">Next prey</div><div id="next">Paramecium</div></div>
+  </div>
+  <div class="hud bl"><div id="barlabel">100 µm</div><div id="bar"></div></div>
+  <div id="toast"></div>
+  <button id="reach" type="button" hidden>Reach</button>
+
+  <div class="veil" id="menu">
+    <div class="card">
+      <a class="home" href="/">&larr; Maple's World</a>
+      <div class="label">Pond water, 100× objective</div>
+      <h1>Pseudopod</h1>
+      <p>You are one amoeba in a drop of pond water. Engulf what is smaller than you. Stay away from what is bigger. Grow until nothing in the dish can swallow you.</p>
+      <div class="keys">
+        <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>crawl</span>
+        <span><kbd>Space</kbd>hold to reach for the nearest food</span>
+        <span><kbd>P</kbd>pause</span>
+      </div>
+      <div class="guide">
+        <div class="g-prey"><b>Food</b>Bacteria, algae, diatoms, euglena. Later paramecia and whole volvox colonies.</div>
+        <div class="g-hunt"><b>Predators</b>Didinium dashes. Heliozoans sting. Nematodes bite. Chaos, the giant amoeba, swallows you whole.</div>
+        <div class="g-para"><b>Parasites</b>Pink means sick. Viruses chase and latch on. Pink rods look like food and rot you from inside.</div>
+      </div>
+      <button id="start" type="button">Enter the dish</button>
+    </div>
+  </div>
+
+  <div class="veil" id="over" hidden>
+    <div class="card">
+      <div class="label" id="cause">Eaten</div>
+      <h2 id="verdict">The dish goes on without you.</h2>
+      <div class="stats">
+        <div><div class="label">Peak diameter</div><div class="big"><span id="s-size">0</span><small>µm</small></div></div>
+        <div><div class="label">Engulfed</div><div class="big" id="s-eaten">0</div></div>
+        <div><div class="label">Survived</div><div class="big" id="s-time">0:00</div></div>
+      </div>
+      <button id="again" type="button">Divide and try again</button>
+    </div>
+  </div>
+
+  <div class="veil" id="pause" hidden>
+    <div class="card">
+      <h2>Paused</h2>
+      <p>Press <kbd>P</kbd> or tap resume.</p>
+      <button id="resume" type="button">Resume</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+const TAU = Math.PI * 2, R_WORLD = 2600, UM = 14; // µm per world unit radius → diameter = r*2*UM
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
+const steer = (c, target, rate, dt) => { c.head += clamp(angDiff(c.head, target), -rate * dt, rate * dt); };
+
+/* ---------- species ---------- */
+// food: mass gained. eatR: your radius needed to engulf it (default r*1.15).
+const SPEC = {
+  coccus:     { name:'Cocci',      r:[4,6],   food:1,   speed:10,  ai:'drift', n:130 },
+  bacillus:   { name:'Bacillus',   r:[5,7],   food:1.5, speed:14,  ai:'drift', n:90 },
+  spirillum:  { name:'Spirillum',  r:[6,8],   food:2,   speed:34,  ai:'swim',  n:50, sense:0 },
+  algae:      { name:'Alga',       r:[7,11],  food:2.5, speed:6,   ai:'drift', n:80 },
+  diatom:     { name:'Diatom',     r:[10,13], food:3.5, speed:3,   ai:'drift', n:45 },
+  euglena:    { name:'Euglena',    r:[12,14], food:6,   speed:62,  ai:'swim',  n:36, sense:150 },
+  paramecium: { name:'Paramecium', r:[21,24], food:16,  speed:105, ai:'swim',  n:22, sense:230 },
+  volvox:     { name:'Volvox',     r:[32,37], food:35,  speed:12,  ai:'drift', n:8 },
+  didinium:   { name:'Didinium',   r:[25,27], food:25,  speed:92,  ai:'hunt',  n:9,  pred:true, sense:400, bite:.38 },
+  heliozoan:  { name:'Heliozoan',  r:[28,32], food:30,  speed:5,   ai:'drift', n:10, pred:true, bite:.16, eatK:1.4 },
+  nematode:   { name:'Nematode',   r:[15,17], food:0,   speed:125, ai:'worm',  n:4,  pred:true, sense:430, bite:.3, never:true },
+  chaos:      { name:'Chaos',      r:[66,74], food:150, speed:52,  ai:'ooze',  n:3,  pred:true, sense:540, bite:.6 },
+  virus:      { name:'Virus',      r:[5,5],   food:0,   speed:64,  ai:'virus', n:18, para:true, never:true },
+  mimic:      { name:'Pink rod',   r:[5,7],   food:0,   speed:14,  ai:'drift', n:22, para:true, never:true },
+};
+const MILESTONES = [
+  { r:25.5, next:'Didinium',   msg:'Paramecia fit inside you now.' },
+  { r:31,   next:'Volvox',     msg:'Didinium can no longer take you. Eat it.' },
+  { r:42.5, next:'Heliozoan',  msg:'Volvox colonies are food.' },
+  { r:44,   next:'Chaos',      msg:'Heliozoan spines no longer stop you.' },
+  { r:60,   next:'Chaos',      msg:'Nematodes cannot bite through you.' },
+  { r:85,   next:'Nothing left', msg:'You have outgrown Chaos. Engulf it.' },
+];
+
+/* ---------- state ---------- */
+let W = 0, H = 0, DPR = 1, scale = 1;
+let cells = [], bits = [], specks = [];
+let state = 'menu', tGame = 0, tNow = 0, eaten = 0, peakR = 0, mileIdx = 0, apex = false;
+const keys = {}, touch = { x:0, y:0, id:null, sx:0, sy:0, reach:false };
+const cam = { x:0, y:0 };
+const p = {}; const pod = {};
+
+function resetPlayer() {
+  Object.assign(p, { x:0, y:0, vx:0, vy:0, mass:20, r:18, face:-Math.PI/2, inv:0, infected:0, viruses:[], vac:[], seed:rnd(0,99), hurt:0 });
+  Object.assign(pod, { len:0, ang:p.face, target:null, grab:null });
+}
+const radiusOf = m => 4 * Math.sqrt(m);
+const canEat = c => !c.s.never && p.r > c.eatR;
+
+function spawn(type, far) {
+  const s = SPEC[type]; let x, y, tries = 0;
+  do { const a = rnd(0, TAU), d = Math.sqrt(Math.random()) * (R_WORLD - 90); x = Math.cos(a) * d; y = Math.sin(a) * d; }
+  while (Math.hypot(x - p.x, y - p.y) < far && ++tries < 12);
+  const r = rnd(s.r[0], s.r[1]);
+  const c = { type, s, x, y, vx:0, vy:0, r, eatR:r * (s.eatK || 1.15), ang:rnd(0, TAU), head:rnd(0, TAU), spin:rnd(-.6, .6), turn:0, seed:rnd(0, 100), cd:rnd(0, 3), dash:0, dorm:0 };
+  if (type === 'nematode') { c.seg = []; for (let i = 0; i < 16; i++) c.seg.push({ x, y }); }
+  if (type === 'heliozoan') c.spike = r * 2.3;
+  cells.push(c); return c;
+}
+function viewRadius() { return Math.hypot(W, H) / 2 / scale + 120; }
+function populate(initial) {
+  const counts = {}; for (const c of cells) counts[c.type] = (counts[c.type] || 0) + 1;
+  for (const type in SPEC) {
+    const s = SPEC[type], danger = s.pred || s.para;
+    let need = s.n - (counts[type] || 0);
+    if (!initial) need = Math.min(need, 2);
+    for (let i = 0; i < need; i++) spawn(type, initial ? (danger ? 520 : 90) : viewRadius());
+  }
+}
+function newWorld() {
+  cells = []; bits = []; tGame = 0; eaten = 0; mileIdx = 0; apex = false;
+  resetPlayer(); peakR = p.r; populate(true);
+  $('next').textContent = 'Paramecium';
+}
+for (let i = 0; i < 160; i++) specks.push({ x:rnd(0, 2000), y:rnd(0, 2000), r:rnd(.6, 2.2), a:rnd(.04, .16) });
+
+/* ---------- messages ---------- */
+let toastT = 0;
+function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('on'); toastT = 3.2; }
+const fmtTime = t => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
+
+/* ---------- player actions ---------- */
+function burst(x, y, color, n, sp) { for (let i = 0; i < n; i++) { const a = rnd(0, TAU), v = rnd(.3, 1) * sp; bits.push({ x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v, t:rnd(.4, .9), color }); } }
+const COLORS = { coccus:'#cfe6f2', bacillus:'#d9cc9f', spirillum:'#c3b1f0', algae:'#6fcf7a', diatom:'#d9b25a', euglena:'#58c26a', paramecium:'#a9c8d8', volvox:'#7fd48a', didinium:'#ff6b4a', heliozoan:'#ffe9a8', chaos:'#b59ad6', virus:'#ff5fb7', mimic:'#ff86c6', nematode:'#f0a58c' };
+function eat(c) {
+  c.dead = true; p.mass += c.s.food; eaten++;
+  p.vac.push({ a:rnd(0, TAU), d:rnd(.15, .6), t:5, color:COLORS[c.type], k:clamp(c.r / p.r, .12, .5) });
+  if (p.vac.length > 7) p.vac.shift();
+  burst(c.x, c.y, COLORS[c.type], 6, 60);
+  if (c.type === 'chaos' && !apex) { apex = true; toast('Apex of the dish. Nothing here can eat you.'); }
+}
+function die(cause, verdict) {
+  state = 'over'; burst(p.x, p.y, '#f2c14e', 40, 220);
+  $('cause').textContent = cause; $('verdict').textContent = verdict;
+  $('s-size').textContent = Math.round(peakR * 2 * UM); $('s-eaten').textContent = eaten; $('s-time').textContent = fmtTime(tGame);
+  setTimeout(() => { if (state === 'over') { $('over').hidden = false; $('again').focus(); } }, 900);
+}
+function loseMass(amount, cause, verdict) {
+  p.mass -= amount; p.hurt = .35;
+  if (p.mass < 9) { p.mass = 9; die(cause, verdict); return true; }
+  return false;
+}
+function bite(c, d, dx, dy) {
+  if (p.inv > 0) return;
+  const nx = -dx / (d || 1), ny = -dy / (d || 1);
+  if (c.type === 'chaos' && p.r < c.r * .5) { die('Engulfed by Chaos', 'A bigger amoeba did to you what you do to bacteria.'); return; }
+  const dmg = Math.max(6, p.mass * c.s.bite);
+  p.inv = 1.3; p.vx = nx * 420; p.vy = ny * 420;
+  burst(p.x, p.y, '#f2c14e', 14, 160);
+  const verdicts = { didinium:'Didinium hunts by ramming. It rammed.', heliozoan:'You drifted into the spines.', nematode:'The worm found you first.', chaos:'Chaos took the last of you.' };
+  loseMass(dmg, 'Killed by ' + (c.type === 'chaos' ? 'Chaos' : 'a ' + c.s.name.toLowerCase()), verdicts[c.type]);
+}
+
+/* ---------- update ---------- */
+function updatePlayer(dt) {
+  let ix = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0) + touch.x;
+  let iy = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0) + touch.y;
+  const il = Math.hypot(ix, iy); if (il > 1) { ix /= il; iy /= il; }
+  const sp = 200 * Math.pow(18 / p.r, .3) * (pod.len > 4 ? .55 : 1) * (p.infected > 0 ? .8 : 1);
+  const k = Math.min(1, dt * 5);
+  p.vx += (ix * sp - p.vx) * k; p.vy += (iy * sp - p.vy) * k;
+  p.x += p.vx * dt; p.y += p.vy * dt;
+  if (il > .1) p.face += angDiff(p.face, Math.atan2(iy, ix)) * Math.min(1, dt * 8);
+  const dc = Math.hypot(p.x, p.y), lim = R_WORLD - p.r;
+  if (dc > lim) { p.x *= lim / dc; p.y *= lim / dc; }
+
+  p.inv = Math.max(0, p.inv - dt); p.hurt = Math.max(0, p.hurt - dt);
+  if (p.mass > 30) p.mass -= p.mass * .0025 * dt;
+  if (p.infected > 0) { p.infected -= dt; if (loseMass(2 * dt, 'Rotted from inside', 'The pink rod was never food.')) return; p.hurt = 0; }
+  for (const v of p.viruses) {
+    v.t -= dt;
+    if (loseMass(1.3 * dt, 'Drained by viruses', 'They needed a host. You were closest.')) return; p.hurt = 0;
+    if (v.t <= 0) { // lysis: the virus copies itself and leaves
+      for (let i = 0; i < 2 && cells.length < 700; i++) { const n = spawn('virus', 0); const a = v.a + rnd(-.6, .6); n.x = p.x + Math.cos(a) * (p.r + 14); n.y = p.y + Math.sin(a) * (p.r + 14); n.vx = Math.cos(a) * 160; n.vy = Math.sin(a) * 160; n.dorm = 2.5; }
+      burst(p.x + Math.cos(v.a) * p.r, p.y + Math.sin(v.a) * p.r, '#ff5fb7', 6, 90);
+    }
+  }
+  p.viruses = p.viruses.filter(v => v.t > 0);
+  for (const v of p.vac) v.t -= dt; p.vac = p.vac.filter(v => v.t > 0);
+  p.r += (radiusOf(p.mass) - p.r) * Math.min(1, dt * 6);
+  if (p.r > peakR) peakR = p.r;
+  while (mileIdx < MILESTONES.length && p.r > MILESTONES[mileIdx].r) { toast(MILESTONES[mileIdx].msg); $('next').textContent = MILESTONES[mileIdx].next; mileIdx++; }
+
+  // pseudopod
+  const reaching = keys[' '] || touch.reach, reach = p.r * 3 + 50, tipR = p.r * .32 + 4;
+  if (pod.grab) {
+    pod.len -= 640 * dt;
+    if (pod.len <= 0) { pod.len = 0; eat(pod.grab); pod.grab = null; }
+  } else if (reaching) {
+    const tg = pod.target;
+    if (!tg || tg.dead || Math.hypot(tg.x - p.x, tg.y - p.y) > reach * 1.3 + p.r) pod.target = findTarget(reach * 1.1 + p.r);
+    const t2 = pod.target, ta = t2 ? Math.atan2(t2.y - p.y, t2.x - p.x) : p.face;
+    if (pod.len < 2) pod.ang = ta; else pod.ang += angDiff(pod.ang, ta) * Math.min(1, dt * 12);
+    const want = t2 ? Math.min(reach, Math.hypot(t2.x - p.x, t2.y - p.y) - p.r * .8 + 3) : reach * .75;
+    pod.len = Math.max(0, pod.len + clamp(want - pod.len, -640 * dt, 540 * dt));
+  } else { pod.len = Math.max(0, pod.len - 640 * dt); pod.target = null; }
+}
+function tipPos() { const d = p.r * .8 + pod.len; return [p.x + Math.cos(pod.ang) * d, p.y + Math.sin(pod.ang) * d]; }
+function findTarget(range) {
+  let best = null, bd = range;
+  for (const c of cells) { if (c.dead || c.s.para || !canEat(c)) continue; const d = Math.hypot(c.x - p.x, c.y - p.y) - c.s.food * 1.5; if (d < bd) { bd = d; best = c; } }
+  return best;
+}
+
+function updateCell(c, dt, alive) {
+  const s = c.s, dx = p.x - c.x, dy = p.y - c.y, d = Math.hypot(dx, dy);
+  const prey = alive && canEat(c);
+  const threat = alive && s.pred && !canEat(c) && !(c.type === 'nematode' && p.r > 60);
+  const toP = Math.atan2(dy, dx);
+  c.turn = (c.turn + rnd(-1, 1) * dt * 5) * .985;
+  let speed = s.speed;
+  switch (s.ai) {
+    case 'drift':
+      c.ang += c.spin * dt; c.vx += rnd(-1, 1) * s.speed * 4 * dt; c.vy += rnd(-1, 1) * s.speed * 4 * dt;
+      { const v = Math.hypot(c.vx, c.vy); if (v > s.speed) { c.vx *= s.speed / v; c.vy *= s.speed / v; } }
+      c.x += c.vx * dt; c.y += c.vy * dt; break;
+    case 'swim':
+      c.head += c.turn * dt * 2;
+      if (prey && d < s.sense + p.r) { steer(c, toP + Math.PI, 5, dt); speed *= 1.55; }
+      c.ang = c.head; c.x += Math.cos(c.head) * speed * dt; c.y += Math.sin(c.head) * speed * dt; break;
+    case 'hunt': {
+      c.cd -= dt; c.dash -= dt;
+      if (threat && d < s.sense) {
+        steer(c, toP, 3.2, dt);
+        if (c.cd <= 0 && d < 240 && Math.abs(angDiff(c.head, toP)) < .5) { c.dash = .55; c.cd = 3.2; }
+      } else if (prey && d < 260) { steer(c, toP + Math.PI, 4, dt); speed *= 1.3; }
+      else {
+        if (c.prey && !c.prey.dead) steer(c, Math.atan2(c.prey.y - c.y, c.prey.x - c.x), 2.5, dt); else c.head += c.turn * dt * 2;
+        if ((c.scan = (c.scan || 0) - dt) < 0) { c.scan = .6; c.prey = null; let bd = 330; for (const o of cells) if (o.type === 'paramecium' && !o.dead) { const dd = Math.hypot(o.x - c.x, o.y - c.y); if (dd < bd) { bd = dd; c.prey = o; } } if (c.prey && bd < c.r + 10) { c.prey.dead = true; burst(c.prey.x, c.prey.y, COLORS.paramecium, 8, 70); c.prey = null; } }
+      }
+      if (c.dash > 0) speed = 300;
+      c.ang = c.head; c.x += Math.cos(c.head) * speed * dt; c.y += Math.sin(c.head) * speed * dt; break; }
+    case 'ooze':
+      if (threat && d < s.sense + p.r) steer(c, toP, 1.6, dt); else if (prey && d < 400) steer(c, toP + Math.PI, 1.5, dt); else { c.head += c.turn * dt; speed *= .5; }
+      c.x += Math.cos(c.head) * speed * dt; c.y += Math.sin(c.head) * speed * dt; break;
+    case 'worm': {
+      if (threat && d < s.sense) steer(c, toP, 2.4, dt); else { c.head += c.turn * dt * 1.5; speed *= .7; }
+      const h = c.head + Math.sin(tNow * 5 + c.seed) * .55;
+      c.ang = h; c.x += Math.cos(h) * speed * dt; c.y += Math.sin(h) * speed * dt;
+      let px = c.x, py = c.y;
+      for (const sg of c.seg) { const ex = sg.x - px, ey = sg.y - py, el = Math.hypot(ex, ey) || 1; if (el > 11) { sg.x = px + ex / el * 11; sg.y = py + ey / el * 11; } px = sg.x; py = sg.y; }
+      break; }
+    case 'virus':
+      c.ang += dt * 1.5;
+      if (c.dorm > 0) { c.dorm -= dt; c.vx *= 1 - dt * 2; c.vy *= 1 - dt * 2; }
+      else if (alive && d < 330 + p.r) { c.vx += (Math.cos(toP) * s.speed - c.vx) * dt * 3; c.vy += (Math.sin(toP) * s.speed - c.vy) * dt * 3; }
+      else { c.vx += rnd(-1, 1) * 60 * dt; c.vy += rnd(-1, 1) * 60 * dt; c.vx *= 1 - dt; c.vy *= 1 - dt; }
+      c.x += c.vx * dt; c.y += c.vy * dt; break;
+  }
+  const dc = Math.hypot(c.x, c.y), lim = R_WORLD - c.r - 4;
+  if (dc > lim) { c.x *= lim / dc; c.y *= lim / dc; c.head = Math.atan2(-c.y, -c.x) + rnd(-.8, .8); c.vx *= -.5; c.vy *= -.5; }
+  if (!alive) return;
+
+  // contact with the player
+  if (c.type === 'virus') { if (c.dorm <= 0 && d < p.r + c.r) { c.dead = true; p.viruses.push({ a:Math.atan2(-dy, -dx), t:7 }); } return; }
+  if (c.type === 'mimic') { if (d < p.r * .95) { c.dead = true; p.infected = 6; toast('That rod was a parasite.'); } return; }
+  if (canEat(c)) { if (d < p.r * .9) eat(c); return; }
+  if (threat) {
+    const hit = c.type === 'heliozoan' ? c.spike * .85 : c.r * .85;
+    if (d < p.r * .9 + hit) bite(c, d, dx, dy);
+  } else if (d < p.r + c.r && d > 0) { // too big to swallow: shoulder past it
+    const push = (p.r + c.r - d) / d * .5; c.x -= dx * push; c.y -= dy * push; p.x += dx * push * .4; p.y += dy * push * .4;
+  }
+}
+
+function update(dt) {
+  tNow += dt;
+  const alive = state === 'play';
+  if (alive) { tGame += dt; updatePlayer(dt); }
+  const live = state === 'play';
+  for (const c of cells) if (!c.dead && c !== pod.grab) updateCell(c, dt, live && state === 'play');
+  if (state === 'play' && !pod.grab && pod.len > 2) { // the tip catches anything edible it touches
+    const [tx, ty] = tipPos(), tipR = p.r * .32 + 4;
+    for (const c of cells) { if (c.dead || c.s.para || !canEat(c)) continue; if (Math.hypot(c.x - tx, c.y - ty) < c.r + tipR) { pod.grab = c; pod.target = null; break; } }
+  }
+  if (pod.grab) { const [tx, ty] = tipPos(); pod.grab.x = tx; pod.grab.y = ty; }
+  if (state !== 'play' && pod.grab) pod.grab = null;
+  cells = cells.filter(c => !c.dead);
+  for (const b of bits) { b.x += b.vx * dt; b.y += b.vy * dt; b.vx *= 1 - dt * 3; b.vy *= 1 - dt * 3; b.t -= dt; }
+  bits = bits.filter(b => b.t > 0);
+  if ((update.sp = (update.sp || 0) - dt) < 0) { update.sp = .5; populate(false); }
+  if (toastT > 0 && (toastT -= dt) <= 0) $('toast').classList.remove('on');
+
+  const targetScale = Math.min(W, H) / 520 * Math.pow(18 / p.r, .55);
+  scale += (clamp(targetScale, .12, 3) - scale) * Math.min(1, dt * 2);
+  if (state === 'menu') { cam.x = Math.cos(tNow * .05) * 300; cam.y = Math.sin(tNow * .07) * 300; }
+  else { cam.x += (p.x - cam.x) * Math.min(1, dt * 6); cam.y += (p.y - cam.y) * Math.min(1, dt * 6); }
+}
+
+/* ---------- drawing ---------- */
+function blob(r, t, seed, amp, n) {
+  ctx.beginPath();
+  for (let i = 0; i <= n; i++) {
+    const a = i / n * TAU;
+    const rr = r * (1 + amp * Math.sin(a * 3 + t * 1.3 + seed) + amp * .7 * Math.sin(a * 5 - t * 1.9 + seed * 2.3) + amp * .4 * Math.sin(a * 2 + t * .7 + seed * 5));
+    const x = Math.cos(a) * rr, y = Math.sin(a) * rr; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.closePath();
+}
+const DRAW = {
+  coccus(c) { ctx.fillStyle = 'rgba(207,230,242,.8)'; for (let i = 0; i < 4; i++) { const a = c.seed + i * 1.7; ctx.beginPath(); ctx.arc(Math.cos(a) * c.r * .55, Math.sin(a) * c.r * .55, c.r * .5, 0, TAU); ctx.fill(); } },
+  bacillus(c) { ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(217,204,159,.85)'; ctx.lineWidth = c.r; ctx.beginPath(); ctx.moveTo(-c.r, 0); ctx.lineTo(c.r, 0); ctx.stroke(); },
+  mimic(c, t) { ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255,134,198,.9)'; ctx.lineWidth = c.r; ctx.beginPath(); ctx.moveTo(-c.r, 0); ctx.lineTo(c.r, 0); ctx.stroke(); ctx.fillStyle = 'rgba(120,10,70,' + (.5 + .4 * Math.sin(t * 4 + c.seed)) + ')'; ctx.beginPath(); ctx.arc(0, 0, c.r * .28, 0, TAU); ctx.fill(); },
+  spirillum(c, t) { ctx.strokeStyle = 'rgba(195,177,240,.9)'; ctx.lineWidth = c.r * .45; ctx.lineCap = 'round'; ctx.beginPath(); for (let i = -6; i <= 6; i++) { const x = i * c.r * .32, y = Math.sin(i * .9 + t * 9 + c.seed) * c.r * .4; i === -6 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke(); },
+  algae(c) { ctx.fillStyle = 'rgba(111,207,122,.75)'; ctx.strokeStyle = 'rgba(190,255,190,.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, c.r, 0, TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(30,110,50,.8)'; ctx.beginPath(); ctx.arc(c.r * .2, c.r * .1, c.r * .5, 0, TAU); ctx.fill(); },
+  diatom(c) { const L = c.r * 1.5, Wd = c.r * .55; ctx.beginPath(); ctx.moveTo(-L, 0); ctx.quadraticCurveTo(0, -Wd * 2, L, 0); ctx.quadraticCurveTo(0, Wd * 2, -L, 0); ctx.fillStyle = 'rgba(217,178,90,.45)'; ctx.strokeStyle = 'rgba(245,225,170,.85)'; ctx.lineWidth = 1.3; ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-L * .8, 0); ctx.lineTo(L * .8, 0); for (let i = -3; i <= 3; i++) { const x = i * L * .22, h = Wd * (1 - Math.abs(i) / 4.5); ctx.moveTo(x, -h); ctx.lineTo(x, h); } ctx.lineWidth = .8; ctx.stroke(); },
+  euglena(c, t) { const r = c.r; ctx.strokeStyle = 'rgba(160,230,170,.7)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(r * 1.3, 0); for (let i = 1; i <= 6; i++) ctx.lineTo(r * 1.3 + i * r * .25, Math.sin(i * 1.2 - t * 14 + c.seed) * r * .3); ctx.stroke(); ctx.beginPath(); ctx.moveTo(r * 1.4, 0); ctx.quadraticCurveTo(r * .3, -r * .85, -r * 1.5, 0); ctx.quadraticCurveTo(r * .3, r * .85, r * 1.4, 0); ctx.fillStyle = 'rgba(88,194,106,.82)'; ctx.fill(); ctx.fillStyle = '#e8463c'; ctx.beginPath(); ctx.arc(r * .85, -r * .12, r * .16, 0, TAU); ctx.fill(); },
+  paramecium(c, t) { const r = c.r; ctx.beginPath(); ctx.ellipse(0, 0, r * 1.7, r * .72, 0, 0, TAU); ctx.setLineDash([1.5, 3]); ctx.lineDashOffset = -t * 30; ctx.strokeStyle = 'rgba(200,225,235,.7)'; ctx.lineWidth = 7; ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = 'rgba(128,165,185,.8)'; ctx.fill(); ctx.strokeStyle = 'rgba(220,240,250,.8)'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.beginPath(); ctx.moveTo(r * .9, -r * .5); ctx.quadraticCurveTo(r * .2, 0, -r * .1, r * .2); ctx.stroke(); ctx.fillStyle = 'rgba(40,70,90,.75)'; ctx.beginPath(); ctx.ellipse(-r * .3, -r * .05, r * .4, r * .25, 0, 0, TAU); ctx.fill(); const pv = .5 + .5 * Math.sin(t * 3 + c.seed); ctx.fillStyle = 'rgba(230,245,255,.5)'; ctx.beginPath(); ctx.arc(-r * 1.1, 0, r * .18 * pv + 1, 0, TAU); ctx.arc(r * 1.1, 0, r * .18 * (1 - pv) + 1, 0, TAU); ctx.fill(); },
+  volvox(c) { const r = c.r; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fillStyle = 'rgba(127,212,138,.18)'; ctx.fill(); ctx.setLineDash([2, 4]); ctx.strokeStyle = 'rgba(127,230,140,.9)'; ctx.lineWidth = 3; ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = 'rgba(60,170,80,.8)'; for (let i = 0; i < 5; i++) { const a = c.seed + i * 1.3, d = r * (.25 + .12 * i % .5 + .15); ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, r * .2, 0, TAU); ctx.fill(); } },
+  didinium(c, t) { const r = c.r; ctx.fillStyle = 'rgba(255,107,74,.85)'; ctx.strokeStyle = 'rgba(255,190,170,.9)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(r * 1.45, 0); ctx.lineTo(r * .8, -r * .35); ctx.quadraticCurveTo(r * .5, -r * .95, -r * .5, -r * .9); ctx.quadraticCurveTo(-r * 1.2, 0, -r * .5, r * .9); ctx.quadraticCurveTo(r * .5, r * .95, r * .8, r * .35); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.setLineDash([1.5, 2.5]); ctx.lineDashOffset = t * 40; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,215,200,.8)'; ctx.beginPath(); ctx.moveTo(r * .55, -r * .98); ctx.lineTo(r * .55, r * .98); ctx.moveTo(-r * .3, -r * 1.0); ctx.lineTo(-r * .3, r * 1.0); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = 'rgba(110,20,10,.6)'; ctx.beginPath(); ctx.ellipse(-r * .1, 0, r * .25, r * .45, 0, 0, TAU); ctx.fill(); },
+  heliozoan(c, t) { const r = c.r; ctx.strokeStyle = 'rgba(255,233,168,.55)'; ctx.lineWidth = 1; ctx.beginPath(); for (let i = 0; i < 26; i++) { const a = i / 26 * TAU, l = c.spike * (.82 + .18 * Math.sin(i * 2.3 + t * 1.5 + c.seed)); ctx.moveTo(Math.cos(a) * r * .9, Math.sin(a) * r * .9); ctx.lineTo(Math.cos(a) * l, Math.sin(a) * l); } ctx.stroke(); ctx.fillStyle = 'rgba(255,233,168,.3)'; ctx.strokeStyle = 'rgba(255,240,200,.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(255,120,70,.75)'; ctx.beginPath(); ctx.arc(0, 0, r * .45, 0, TAU); ctx.fill(); },
+  chaos(c, t) { ctx.rotate(-c.ang); blob(c.r, t * .8, c.seed, .13, 40); ctx.fillStyle = 'rgba(120,90,170,.55)'; ctx.strokeStyle = 'rgba(255,107,74,.9)'; ctx.lineWidth = 3; ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(40,20,70,.7)'; for (let i = 0; i < 6; i++) { const a = c.seed + i * 1.9 + t * .1, d = c.r * (.2 + (i % 3) * .2); ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, c.r * .1, 0, TAU); ctx.fill(); } },
+  virus(c) { ctx.strokeStyle = '#ff5fb7'; ctx.lineWidth = 1; ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; ctx.moveTo(Math.cos(a) * c.r, Math.sin(a) * c.r); ctx.lineTo(Math.cos(a) * c.r * 1.9, Math.sin(a) * c.r * 1.9); } ctx.stroke(); ctx.fillStyle = 'rgba(255,95,183,.9)'; ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; ctx.lineTo(Math.cos(a) * c.r, Math.sin(a) * c.r); } ctx.closePath(); ctx.fill(); },
+};
+function drawWorm(c) {
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(c.x, c.y); for (const s of c.seg) ctx.lineTo(s.x, s.y);
+  ctx.strokeStyle = 'rgba(255,107,74,.9)'; ctx.lineWidth = c.r * 1.5; ctx.stroke();
+  ctx.strokeStyle = 'rgba(90,40,35,.9)'; ctx.lineWidth = c.r * 1.5 - 3; ctx.stroke();
+  ctx.strokeStyle = 'rgba(240,165,140,.5)'; ctx.lineWidth = c.r * .35; ctx.stroke();
+}
+function drawPlayer(t) {
+  const blink = p.inv > 0 && Math.sin(t * 40) > 0;
+  const tipR = p.r * .32 + 4, [tx, ty] = tipPos();
+  const path = () => {
+    ctx.save(); ctx.translate(p.x, p.y);
+    const sp = Math.hypot(p.vx, p.vy) / 260, a = Math.atan2(p.vy, p.vx);
+    ctx.rotate(a); ctx.scale(1 + sp * .22, 1 - sp * .12); ctx.rotate(-a);
+    blob(p.r, t * 1.6, p.seed, .075, 36); ctx.restore();
+    if (pod.len > 1) {
+      const nx = -Math.sin(pod.ang), ny = Math.cos(pod.ang), wb = p.r * .5, bx = p.x + Math.cos(pod.ang) * p.r * .4, by = p.y + Math.sin(pod.ang) * p.r * .4;
+      // wound the same way as the body so the union fills without holes
+      ctx.moveTo(bx - nx * wb, by - ny * wb); ctx.lineTo(tx - nx * tipR * .8, ty - ny * tipR * .8); ctx.lineTo(tx + nx * tipR * .8, ty + ny * tipR * .8); ctx.lineTo(bx + nx * wb, by + ny * wb); ctx.closePath();
+      ctx.moveTo(tx + tipR, ty); ctx.arc(tx, ty, tipR, 0, TAU);
+    }
+  };
+  const sick = p.infected > 0 || p.viruses.length;
+  ctx.globalAlpha = blink ? .45 : 1;
+  ctx.beginPath(); path(); ctx.lineJoin = 'round';
+  ctx.strokeStyle = p.hurt > 0 ? '#ff6b4a' : sick ? '#ff9ad2' : '#ffe08a'; ctx.lineWidth = Math.max(3, p.r * .14); ctx.stroke();
+  ctx.fillStyle = sick ? '#5a3550' : '#5b4a1c'; ctx.fill();
+  const g = ctx.createRadialGradient(p.x - p.r * .3, p.y - p.r * .3, p.r * .1, p.x, p.y, p.r * 1.3 + pod.len);
+  g.addColorStop(0, 'rgba(255,225,140,.55)'); g.addColorStop(1, 'rgba(242,193,78,.12)'); ctx.fillStyle = g; ctx.fill();
+  // what you ate, still being digested
+  for (const v of p.vac) { ctx.globalAlpha = Math.min(1, v.t / 2) * .8; ctx.fillStyle = v.color; ctx.beginPath(); ctx.arc(p.x + Math.cos(v.a) * p.r * v.d, p.y + Math.sin(v.a) * p.r * v.d, p.r * v.k * (.4 + v.t / 8), 0, TAU); ctx.fill(); }
+  ctx.globalAlpha = blink ? .45 : 1;
+  ctx.fillStyle = 'rgba(40,28,6,.75)'; ctx.beginPath(); ctx.arc(p.x - Math.cos(p.face) * p.r * .2, p.y - Math.sin(p.face) * p.r * .2, p.r * .26, 0, TAU); ctx.fill();
+  const cvp = .5 + .5 * Math.sin(t * 2.4); ctx.strokeStyle = 'rgba(255,245,210,.7)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x + Math.cos(p.face + 2) * p.r * .5, p.y + Math.sin(p.face + 2) * p.r * .5, p.r * .15 * cvp + 1.5, 0, TAU); ctx.stroke();
+  for (const v of p.viruses) { ctx.save(); ctx.translate(p.x + Math.cos(v.a) * p.r, p.y + Math.sin(v.a) * p.r); ctx.rotate(v.a); DRAW.virus({ r:5 + Math.sin(t * 10) }); ctx.restore(); }
+  ctx.globalAlpha = 1;
+}
+
+function draw() {
+  const t = tNow;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#020a0d'; ctx.fillRect(0, 0, W, H);
+  const ox = W / 2 - cam.x * scale, oy = H / 2 - cam.y * scale;
+  ctx.setTransform(DPR * scale, 0, 0, DPR * scale, DPR * ox, DPR * oy);
+  // the dish
+  const g = ctx.createRadialGradient(0, 0, 200, 0, 0, R_WORLD); g.addColorStop(0, '#0d323a'); g.addColorStop(1, '#051a20');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R_WORLD, 0, TAU); ctx.fill();
+  ctx.save(); ctx.clip();
+  const vr = viewRadius(), x0 = cam.x - vr, x1 = cam.x + vr, y0 = cam.y - vr, y1 = cam.y + vr;
+  // counting-chamber grid
+  ctx.strokeStyle = 'rgba(191,233,228,.055)'; ctx.lineWidth = 1 / scale; ctx.beginPath();
+  for (let x = Math.ceil(x0 / 250) * 250; x < x1; x += 250) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+  for (let y = Math.ceil(y0 / 250) * 250; y < y1; y += 250) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+  ctx.stroke(); ctx.strokeStyle = 'rgba(191,233,228,.1)'; ctx.beginPath();
+  for (let x = Math.ceil(x0 / 1000) * 1000; x < x1; x += 1000) for (const o of [-12, 0, 12]) { ctx.moveTo(x + o, y0); ctx.lineTo(x + o, y1); }
+  for (let y = Math.ceil(y0 / 1000) * 1000; y < y1; y += 1000) for (const o of [-12, 0, 12]) { ctx.moveTo(x0, y + o); ctx.lineTo(x1, y + o); }
+  ctx.stroke();
+  // out-of-focus debris, drifting on another plane
+  for (const s of specks) { const sx = ((s.x - cam.x * .5) % 2000 + 2000) % 2000 - 1000 + cam.x, sy = ((s.y - cam.y * .5) % 2000 + 2000) % 2000 - 1000 + cam.y; ctx.fillStyle = 'rgba(191,233,228,' + s.a + ')'; ctx.beginPath(); ctx.arc(sx, sy, s.r * 3, 0, TAU); ctx.fill(); }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(191,233,228,.35)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, R_WORLD, 0, TAU); ctx.stroke();
+
+  const showP = state === 'play' || state === 'pause';
+  for (const c of cells) {
+    const ext = c.type === 'nematode' ? 200 : c.spike || c.r * 2;
+    if (c.x + ext < x0 || c.x - ext > x1 || c.y + ext < y0 || c.y - ext > y1) continue;
+    if (showP && c.s.pred && !canEat(c) && !(c.type === 'nematode' && p.r > 60)) { // warning halo on anything that can hurt you
+      ctx.strokeStyle = 'rgba(255,107,74,' + (.18 + .12 * Math.sin(t * 5)) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c.x, c.y, (c.spike || c.r) + 9, 0, TAU); ctx.stroke();
+    }
+    if (c.type === 'nematode') { drawWorm(c); continue; }
+    ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.ang);
+    if (c === pod.grab) { const k = .6 + .4 * clamp(pod.len / 60, 0, 1); ctx.scale(k, k); }
+    DRAW[c.type](c, t); ctx.restore();
+  }
+  if (showP) drawPlayer(t);
+  for (const b of bits) { ctx.globalAlpha = clamp(b.t * 2, 0, 1); ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, 2.2, 0, TAU); ctx.fill(); }
+  ctx.globalAlpha = 1;
+
+  // screen space: ocular vignette and threat pointers
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.hypot(W, H) * .6);
+  vg.addColorStop(0, 'rgba(2,10,13,0)'); vg.addColorStop(1, 'rgba(2,10,13,.85)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  if (state === 'play') {
+    for (const c of cells) {
+      if (!c.s.pred || canEat(c) || c.type === 'heliozoan' || (c.type === 'nematode' && p.r > 60)) continue;
+      const dx = c.x - p.x, dy = c.y - p.y, d = Math.hypot(dx, dy); if (d > 950) continue;
+      const sx = ox + c.x * scale, sy = oy + c.y * scale; if (sx > 0 && sx < W && sy > 0 && sy < H) continue;
+      const a = Math.atan2(dy, dx), m = 26, k = Math.min((W / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (H / 2 - m) / Math.abs(Math.sin(a) || 1e-6));
+      ctx.save(); ctx.translate(W / 2 + Math.cos(a) * k, H / 2 + Math.sin(a) * k); ctx.rotate(a);
+      ctx.globalAlpha = clamp(1.3 - d / 950, .25, 1); ctx.fillStyle = '#ff6b4a'; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-7, -8); ctx.lineTo(-3, 0); ctx.lineTo(-7, 8); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+    if (touch.id !== null) { ctx.strokeStyle = 'rgba(191,233,228,.3)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(touch.sx, touch.sy, 46, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(242,193,78,.5)'; ctx.beginPath(); ctx.arc(touch.sx + touch.x * 46, touch.sy + touch.y * 46, 16, 0, TAU); ctx.fill(); }
+  }
+}
+
+/* ---------- HUD ---------- */
+let hudT = 0;
+function hud(dt) {
+  if ((hudT -= dt) > 0) return; hudT = .12;
+  $('size').textContent = Math.round(p.r * 2 * UM);
+  $('eaten').textContent = eaten; $('time').textContent = fmtTime(tGame);
+  $('status').textContent = p.viruses.length ? 'Virus attached ×' + p.viruses.length + ', losing mass' : p.infected > 0 ? 'Infected, losing mass' : '';
+  let um = 50; for (const v of [50, 100, 200, 500, 1000, 2000, 5000]) { um = v; if (v / UM * scale > 60) break; }
+  $('barlabel').textContent = um >= 1000 ? um / 1000 + ' mm' : um + ' µm'; $('bar').style.width = Math.round(um / UM * scale) + 'px';
+}
+
+/* ---------- loop & input ---------- */
+let last = 0;
+function frame(ts) {
+  const dt = Math.min(.033, (ts - last) / 1000 || 0); last = ts;
+  if (state !== 'pause') update(dt);
+  draw(); if (state === 'play') hud(dt);
+  requestAnimationFrame(frame);
+}
+function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = cv.clientWidth; H = cv.clientHeight; cv.width = W * DPR; cv.height = H * DPR; }
+function start() { newWorld(); state = 'play'; cam.x = cam.y = 0; $('menu').hidden = true; $('over').hidden = true; $('pause').hidden = true; $('reach').hidden = false; cv.focus(); hudT = 0; }
+function togglePause() { if (state === 'play') { state = 'pause'; $('pause').hidden = false; } else if (state === 'pause') { state = 'play'; $('pause').hidden = true; } }
+
+addEventListener('resize', resize);
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k) && state !== 'menu' && state !== 'over') e.preventDefault();
+  if (state === 'play' && k === ' ') e.preventDefault();
+  keys[k] = true;
+  if ((k === 'p' || k === 'escape') && !e.repeat) togglePause();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (state === 'play') togglePause(); });
+cv.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' || touch.id !== null) return; touch.id = e.pointerId; touch.sx = e.clientX; touch.sy = e.clientY; touch.x = touch.y = 0; });
+addEventListener('pointermove', e => { if (e.pointerId !== touch.id) return; let x = (e.clientX - touch.sx) / 46, y = (e.clientY - touch.sy) / 46; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } touch.x = x; touch.y = y; });
+const endTouch = e => { if (e.pointerId === touch.id) { touch.id = null; touch.x = touch.y = 0; } };
+addEventListener('pointerup', endTouch); addEventListener('pointercancel', endTouch);
+const rb = $('reach');
+rb.addEventListener('pointerdown', e => { e.preventDefault(); touch.reach = true; });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) rb.addEventListener(ev, () => { touch.reach = false; });
+rb.addEventListener('contextmenu', e => e.preventDefault());
+$('start').addEventListener('click', start); $('again').addEventListener('click', start); $('resume').addEventListener('click', togglePause);
+
+cv.tabIndex = -1; cv.style.outline = 'none';
+resize(); resetPlayer(); populate(true); scale = Math.min(W, H) / 520;
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

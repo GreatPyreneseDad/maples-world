@@ -3,7 +3,7 @@ import { test } from '@playwright/test';
 /** Visual check: summon the genie, build, look, screenshot. Not asserted; for eyes. */
 test('screenshot', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto('/');
+  await page.goto('/world/');
   await page.waitForFunction(() => (window as any).game?.sync !== undefined, null, { timeout: 60_000 });
   await page.evaluate(async () => {
     const g = (window as any).game;
