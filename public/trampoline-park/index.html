@@ -49,29 +49,54 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--glow);outline-offse
 @media (hover:hover) and (pointer:fine){.pad{display:none}}
 
 #start{position:fixed;inset:0;display:flex;overflow-y:auto;padding:16px;background:rgba(18,27,64,.86);z-index:5;touch-action:pan-y}
-.card{margin:auto;width:min(680px,100%);background:var(--paper);color:var(--ink);border-radius:26px;padding:clamp(18px,4vw,28px);display:flex;flex-direction:column;gap:14px;box-shadow:0 10px 0 rgba(0,0,0,.3)}
+.card{margin:auto;width:min(760px,100%);background:var(--paper);color:var(--ink);border-radius:26px;padding:clamp(18px,4vw,28px);display:flex;flex-direction:column;gap:14px;box-shadow:0 10px 0 rgba(0,0,0,.3)}
 .home{color:var(--ink-dim);font-size:13px;font-weight:800;text-decoration:none;align-self:flex-start}
 h1{font-family:var(--display);font-weight:400;font-size:clamp(40px,10vw,64px);line-height:.95;margin:0;color:var(--night);text-wrap:balance}
 h1 span{color:var(--boost)}
 p{margin:0;font-size:16px;line-height:1.45;font-weight:600;color:var(--ink-dim);max-width:56ch}
-.kids{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.kid{background:#eef3ff;border:3px solid transparent;border-radius:16px;padding:4px;cursor:pointer;min-width:0}
-.kid canvas{width:100%;aspect-ratio:1;display:block}
-.kid:hover{border-color:var(--bed)}
-.kid[aria-pressed="true"]{border-color:var(--boost);background:#fff3e6;box-shadow:0 4px 0 var(--boost);transform:translateY(-2px)}
+.ed{display:grid;grid-template-columns:minmax(190px,230px) minmax(0,1fr);gap:16px;align-items:start}
+.mine{display:flex;flex-direction:column;gap:8px;align-items:stretch;min-width:0}
+#mecv{width:100%;aspect-ratio:10/11;background:linear-gradient(#22326e,#1c2a5e);border-radius:18px;display:block}
+#nm{font-family:var(--display);font-size:24px;line-height:1.05;text-align:center;color:var(--night);min-height:1.1em}
+.namerow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.namerow select{font:800 14px var(--body);color:var(--ink);background:#eef3ff;border:2px solid #d5ddf5;border-radius:10px;padding:8px 6px;min-width:0;width:100%}
+#dice{grid-column:1 / span 2;font:800 13px var(--body);color:var(--ink);background:#fff;border:2px solid #d5ddf5;border-radius:10px;padding:7px;cursor:pointer}
+#dice:hover{border-color:var(--bed)}
+.purse{display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--display);font-size:22px;color:#b8860b}
+.purse i{width:20px;height:20px;border-radius:50%;background:#ffd23f;border:2px solid #b8860b;display:inline-block}
+.opts{min-width:0;display:flex;flex-direction:column;gap:10px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{font:800 14px var(--body);color:var(--ink-dim);background:#eef3ff;border:0;border-radius:999px;padding:8px 14px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--night);color:#fff}
+#panel{display:flex;flex-direction:column;gap:10px;max-height:min(46vh,380px);overflow-y:auto;padding:2px 4px 6px 2px;touch-action:pan-y}
+.grp{display:flex;flex-direction:column;gap:5px}
+.grp>b{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)}
+.sw{display:flex;flex-wrap:wrap;gap:7px}
+.sw button{width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #d5ddf5;cursor:pointer;padding:0;background:var(--c)}
+.sw button[aria-pressed="true"]{box-shadow:0 0 0 3px var(--boost)}
+.sw button.txt{width:auto;border-radius:999px;padding:0 14px;font:800 13px var(--body);color:var(--ink);background:#eef3ff}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.tile{background:#eef3ff;border:3px solid transparent;border-radius:14px;padding:4px 4px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font:800 11.5px var(--body);color:var(--ink);min-width:0;text-align:center;line-height:1.15}
+.tile canvas{width:100%;aspect-ratio:1;display:block}
+.tile:hover{border-color:var(--bed)}
+.tile[aria-pressed="true"]{border-color:var(--boost);background:#fff3e6}
+.tile small{font-size:11px;font-weight:800;color:#b8860b}
+.tile.own small{color:#2f9e5b}.tile.ask{border-color:#b8860b;background:#fff7d6}.tile.no{animation:no .3s}
+@keyframes no{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+#shopmsg{font-size:13px;font-weight:800;color:var(--boost);min-height:1.2em}
+@media (max-width:600px){.ed{grid-template-columns:1fr}.mine{display:grid;grid-template-columns:120px minmax(0,1fr);align-items:center}#mecv{grid-row:1 / span 3}#panel{max-height:none}}
 .row{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
 #go{font-family:var(--display);font-size:26px;color:#fff;background:var(--boost);border:0;border-radius:999px;padding:12px 40px;cursor:pointer;box-shadow:0 7px 0 #c2521a}
 #go:active{transform:translateY(5px);box-shadow:0 2px 0 #c2521a}
 .keys{font-size:13px;font-weight:600;color:var(--ink-dim);line-height:1.6}
 kbd{font:800 12px var(--body);color:var(--ink);background:#e6ebfa;border-radius:5px;padding:1px 6px}
 .fine{font-size:12.5px;font-weight:600;color:var(--ink-dim)}
-@media (max-width:480px){.kids{gap:6px}}
-@media (prefers-reduced-motion:reduce){.kid[aria-pressed="true"]{transform:none}}
+@media (prefers-reduced-motion:reduce){.tile.no{animation:none}}
 </style>
 </head>
 <body>
 <canvas id="c" aria-label="Trampoline Park"></canvas>
-<div class="top l" id="tl" hidden><button class="ib" id="b-menu" type="button">Change kid</button></div>
+<div class="top l" id="tl" hidden><button class="ib" id="b-menu" type="button">My kid &amp; shop</button></div>
 <div class="top r" id="tr" hidden><button class="ib" id="sound" type="button" aria-pressed="true">Sound on</button></div>
 <div class="pad l" id="padl" hidden><button type="button" data-k="left" aria-label="Left">&#9664;</button><button type="button" data-k="right" aria-label="Right">&#9654;</button></div>
 <div class="pad r" id="padr" hidden>
@@ -83,11 +108,23 @@ kbd{font:800 12px var(--body);color:var(--ink);background:#e6ebfa;border-radius:
   <div class="card">
     <a class="home" href="/">&larr; Maple's World</a>
     <h1>Trampoline <span>Park</span></h1>
-    <p>Pick a kid and jump in. Do tricks in the air, land on your feet, and be first to the glowing dots. Orange trampolines throw you higher.</p>
-    <div class="kids" id="kids"></div>
+    <p>Make your kid, then jump in. Tricks and glowing dots earn coins for the shop.</p>
+    <div class="ed">
+      <div class="mine">
+        <canvas id="mecv" width="300" height="330" aria-hidden="true"></canvas>
+        <div id="nm"></div>
+        <div class="namerow"><select id="n1" aria-label="First word of the name"></select><select id="n2" aria-label="Second word of the name"></select><button id="dice" type="button">Surprise me</button></div>
+        <div class="purse" aria-live="polite"><i></i><span id="coins">0</span></div>
+      </div>
+      <div class="opts">
+        <div class="tabs" role="tablist" id="tabs"></div>
+        <div id="panel"></div>
+        <div id="shopmsg" aria-live="polite"></div>
+      </div>
+    </div>
     <div class="row"><button id="go" type="button">Jump in</button>
       <div class="keys"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> move &nbsp; <kbd>Space</kbd> hold for a big bounce<br><kbd>&uarr;</kbd> flip &nbsp; <kbd>&darr;</kbd> star &nbsp; <kbd>Shift</kbd> twist</div></div>
-    <div class="fine">For grown-ups: other kids on this site share the park, so you will see them jumping. There is no chat and there are no names; all anyone can share is a character, where it is, and a score.</div>
+    <div class="fine">For grown-ups: other kids on this site share the park. There is no chat and nothing can be typed. Names are built from our word list. Coins are pretend and cost nothing. Your kid is saved on this device only.</div>
   </div>
 </div>
 
@@ -112,7 +149,7 @@ const BASE = 820, BOOST = 1180;
 const bedAt = x => BEDS.find(b => x >= b.x0 && x <= b.x1);
 
 /* ---------- saved (this browser only) ---------- */
-const save = { sound:true, kid:0, best:0 };
+const save = { sound:true, best:0, look:null, name:null, coins:40, owned:[] };
 try { Object.assign(save, JSON.parse(localStorage.getItem('trampoline-park') || '{}')); } catch (e) {}
 const persist = () => { try { localStorage.setItem('trampoline-park', JSON.stringify(save)); } catch (e) {} };
 
@@ -138,20 +175,43 @@ const SFX = {
 };
 
 /* ---------- the kids ---------- */
-const KIDS = [
-  { girl:1, skin:'#ffd9bd', hair:'#f7d259', style:'long',  top:'#fffef8', dress:1, dots:'#f7b500', sock:'#ff7fb0' },
-  { girl:1, skin:'#8d5a3b', hair:'#2a1c16', style:'puffs', top:'#19c2b0', bottom:'#7a4fd6', sock:'#ffe45c' },
-  { girl:1, skin:'#ffd0b0', hair:'#d9542b', style:'pig',   top:'#6dbb4f', skirt:1, bottom:'#3f6fd1', sock:'#ff7a2f' },
-  { girl:1, skin:'#e0aa78', hair:'#1f1a24', style:'bun',   top:'#ff6b6b', bottom:'#1c2a5e', sock:'#7fe7ff' },
-  { skin:'#f6c9a0', hair:'#6b4424', style:'short', top:'#3f8cff', bottom:'#e2433b', sock:'#ffe45c' },
-  { skin:'#7a4a2e', hair:'#1f1612', style:'curly', top:'#ffd23f', bottom:'#2f9e5b', sock:'#ff5fa2' },
-  { skin:'#ffdcc2', hair:'#f2c14e', style:'spiky', top:'#ff7a2f', bottom:'#59607a', sock:'#19c2b0' },
-  { skin:'#d9a273', hair:'#2b2018', style:'cap',   top:'#f4f6ff', bottom:'#3f6fd1', sock:'#e2433b', cap:'#e2433b' },
+/* ---------- looks: twelve small numbers describe a kid, so that is all another device ever needs ---------- */
+// [skin, hair style, hair colour, top colour, pattern, bottoms, bottom colour, socks, hat, glasses, back, trail]
+const PAL = {
+  skin:['#ffd9bd', '#f6c9a0', '#e0aa78', '#c68b5e', '#8d5a3b', '#5f3b25'],
+  hair:['#f7d259', '#d9542b', '#6b4424', '#2a1c16', '#1f1a24', '#ff7fb0', '#7a4fd6', '#19c2b0', '#e9e9f2'],
+  col:['#fffef8', '#ff6b6b', '#ff7a2f', '#ffd23f', '#6dbb4f', '#19c2b0', '#3f8cff', '#7a4fd6', '#ff5fa2', '#1c2a5e', '#59607a'],
+};
+const STYLES = ['long', 'pig', 'puffs', 'bun', 'short', 'curly', 'spiky', 'bob'];
+const LIMITS = [6, 8, 9, 11, 5, 3, 11, 11, 8, 5, 5, 5];
+const PRESETS = [[0, 0, 0, 0, 2, 2, 0, 8], [4, 2, 3, 5, 0, 0, 7, 3], [0, 1, 1, 4, 1, 1, 6, 2], [2, 3, 4, 1, 0, 0, 9, 5], [1, 4, 2, 6, 0, 0, 1, 3], [4, 5, 3, 3, 1, 0, 4, 8], [0, 6, 0, 2, 0, 0, 10, 5], [2, 7, 3, 8, 0, 1, 9, 3]].map(a => a.concat([0, 0, 0, 0]));
+const cleanLook = L => Array.isArray(L) && L.length === 12 && L.every((v, i) => Number.isInteger(v) && v >= 0 && v < LIMITS[i]) ? L.slice() : null;
+const kidOf = L => ({ skin:PAL.skin[L[0]], style:STYLES[L[1]], hair:PAL.hair[L[2]], top:PAL.col[L[3]], pat:L[4], skirt:L[5] === 1, dress:L[5] === 2, bottom:PAL.col[L[6]], sock:PAL.col[L[7]], hat:L[8], gl:L[9], bk:L[10], tr:L[11] });
+// names are two words from these lists. Nothing can be typed, so nothing unkind or private can be sent
+const N1 = ['Bouncy', 'Super', 'Captain', 'Princess', 'Turbo', 'Sparkle', 'Sunny', 'Flying', 'Mighty', 'Jolly', 'Lucky', 'Silly', 'Speedy', 'Cosmic', 'Rainbow', 'Happy', 'Brave', 'Dizzy', 'Giggly', 'Wild', 'Little', 'Big', 'Queen', 'King', 'Doctor', 'Ninja', 'Magic', 'Funky', 'Zippy', 'Fuzzy'];
+const N2 = ['Maple', 'Sunflower', 'Unicorn', 'Rocket', 'Kangaroo', 'Bunny', 'Tiger', 'Star', 'Comet', 'Pickle', 'Noodle', 'Panda', 'Dragon', 'Frog', 'Cupcake', 'Pancake', 'Popcorn', 'Flipper', 'Jumper', 'Penguin', 'Otter', 'Puppy', 'Kitten', 'Dino', 'Robot', 'Pirate', 'Moon', 'Cloud', 'Thunder', 'Bean', 'Waffle', 'Taco', 'Fox', 'Piggy'];
+const cleanName = n => Array.isArray(n) && n.length === 2 && Number.isInteger(n[0]) && Number.isInteger(n[1]) && n[0] >= 0 && n[0] < N1.length && n[1] >= 0 && n[1] < N2.length ? [n[0], n[1]] : null;
+const nameText = n => N1[n[0]] + ' ' + N2[n[1]];
+// the shop: slot is the index into the look
+const SHOP = [
+  { id:'p3', slot:4, v:3, name:'Star shirt', price:15, group:'Shirts' }, { id:'p4', slot:4, v:4, name:'Heart shirt', price:15, group:'Shirts' },
+  { id:'h1', slot:8, v:1, name:'Backwards cap', price:20, group:'Hats' }, { id:'h2', slot:8, v:2, name:'Big bow', price:25, group:'Hats' }, { id:'h5', slot:8, v:5, name:'Party hat', price:30, group:'Hats' }, { id:'h3', slot:8, v:3, name:'Cat ears', price:40, group:'Hats' }, { id:'h4', slot:8, v:4, name:'Bunny ears', price:40, group:'Hats' }, { id:'h6', slot:8, v:6, name:'Crown', price:100, group:'Hats' }, { id:'h7', slot:8, v:7, name:'Unicorn horn', price:120, group:'Hats' },
+  { id:'g1', slot:9, v:1, name:'Round glasses', price:15, group:'Glasses' }, { id:'g2', slot:9, v:2, name:'Cool shades', price:30, group:'Glasses' }, { id:'g3', slot:9, v:3, name:'Star glasses', price:45, group:'Glasses' }, { id:'g4', slot:9, v:4, name:'Heart glasses', price:45, group:'Glasses' },
+  { id:'b1', slot:10, v:1, name:'Backpack', price:35, group:'On your back' }, { id:'b2', slot:10, v:2, name:'Hero cape', price:70, group:'On your back' }, { id:'b3', slot:10, v:3, name:'Fairy wings', price:110, group:'On your back' }, { id:'b4', slot:10, v:4, name:'Rocket pack', price:160, group:'On your back' },
+  { id:'t1', slot:11, v:1, name:'Sparkle trail', price:50, group:'Trails' }, { id:'t2', slot:11, v:2, name:'Star trail', price:70, group:'Trails' }, { id:'t3', slot:11, v:3, name:'Heart trail', price:70, group:'Trails' }, { id:'t4', slot:11, v:4, name:'Rainbow trail', price:150, group:'Trails' },
 ];
+save.look = cleanLook(save.look) || PRESETS[Number.isInteger(save.kid) ? clamp(save.kid, 0, 7) : 0].slice();
+save.name = cleanName(save.name) || [0, 0];
+if (!Array.isArray(save.owned)) save.owned = []; save.coins = Math.max(0, Math.floor(+save.coins || 0));
+// only things you own can be worn, even if the saved look says otherwise
+for (const it of SHOP) if (save.look[it.slot] === it.v && !save.owned.includes(it.id)) save.look[it.slot] = 0;
+
 const OUT = 'rgba(20,20,50,.45)';
 function shape(fill, stroke = OUT, lw = 1.5) { g.fillStyle = fill; g.fill(); if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); } }
 function ell(x, y, rx, ry, rot = 0) { g.beginPath(); g.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), rot, 0, TAU); }
 function limb(x0, y0, x1, y1, w, col) { g.lineCap = 'round'; g.strokeStyle = OUT; g.lineWidth = w + 2.4; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.strokeStyle = col; g.lineWidth = w; g.stroke(); }
+function starPath(x, y, r) { g.beginPath(); for (let i = 0; i < 10; i++) { const a = i / 10 * TAU - PI / 2, q = i % 2 ? r * 0.45 : r; g.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); } g.closePath(); }
+function heartPath(x, y, r) { g.beginPath(); g.moveTo(x, y + r * 0.9); g.bezierCurveTo(x - r * 1.6, y - r * 0.2, x - r * 0.7, y - r * 1.3, x, y - r * 0.5); g.bezierCurveTo(x + r * 0.7, y - r * 1.3, x + r * 1.6, y - r * 0.2, x, y + r * 0.9); g.closePath(); }
 // origin at the hips, facing right. pose: up | down | tuck | star | twist | squat | flop
 function drawKid(k, pose, t) {
   let armA = 100, legA = 8, legL = 36, armL = 24;
@@ -159,41 +219,57 @@ function drawKid(k, pose, t) {
   else if (pose === 'tuck') { armA = 40; legL = 18; legA = 60; } else if (pose === 'twist') { armA = 20; legA = 2; }
   else if (pose === 'squat') { legL = 24; legA = 24; armA = 70; } else if (pose === 'flop') { armA = 150; legA = 30; }
   g.save(); if (pose === 'twist') g.scale(Math.cos(t * 16) * 0.75 + 0.25 * Math.sign(Math.cos(t * 16) || 1), 1);
-  const hairBack = () => {
-    if (k.style === 'long') { g.beginPath(); g.moveTo(-10, -58); g.bezierCurveTo(-24, -54, -22, -30, -18 + Math.sin(t * 7) * 2, -10); g.lineTo(-4, -14); g.lineTo(2, -52); g.closePath(); shape(k.hair); }
-    else if (k.style === 'pig') for (const s of [-1, 1]) { g.save(); g.translate(s * 13 - 2, -46); g.rotate(s * 0.5 + Math.sin(t * 8) * 0.15); ell(s * 4, 8, 5, 11); shape(k.hair); g.restore(); }
-    else if (k.style === 'puffs') for (const s of [-1, 1]) { ell(s * 13 - 1, -58, 8.5, 8.5); shape(k.hair); }
-    else if (k.style === 'bun') { ell(-3, -64, 7.5, 7.5); shape(k.hair); }
-  };
-  hairBack();
-  // legs: tucked legs fold forward, otherwise they hang and spread
-  for (const s of [-1, 1]) { const a = (pose === 'tuck' ? 90 - legA * 0.6 : 90 - s * legA) * DEG, fx = pose === 'tuck' ? 10 + s * 3 : Math.cos(a) * legL, fy = pose === 'tuck' ? 12 : Math.sin(a) * legL;
-    limb(s * 4, 0, s * 4 + fx * (pose === 'tuck' ? 1 : 1), fy, 8, k.skin); limb(s * 4 + fx * 0.78, fy * 0.78, s * 4 + fx, fy, 8.6, k.sock); }
-  // far arm
+  const ink = k.top === PAL.col[0] ? '#ff5fa2' : 'rgba(255,255,255,.9)';
+  // things worn on the back go on first
+  if (k.bk === 1) { g.beginPath(); g.roundRect(-19, -31, 11, 24, 4); shape('#3f8cff'); g.beginPath(); g.roundRect(-18, -22, 8, 8, 2); shape('#ffd23f', null); }
+  else if (k.bk === 2) { const f = Math.sin(t * 9) * 5; g.beginPath(); g.moveTo(-6, -31); g.lineTo(6, -31); g.quadraticCurveTo(-14, -8, -26 + f, 14); g.quadraticCurveTo(-30, 0, -22 - f * 0.4, -12); g.closePath(); shape('#e2433b'); }
+  else if (k.bk === 3) { const f = 0.75 + Math.sin(t * 14) * 0.25; for (const [y, r] of [[-30, 15], [-14, 10]]) { g.save(); g.translate(-8, y); g.rotate(-0.5); ell(-r * 0.8, 0, r * f, r * 0.6); shape('rgba(190,240,255,.8)', 'rgba(120,190,230,.9)'); g.restore(); } }
+  else if (k.bk === 4) { if (pose === 'up') { g.beginPath(); g.moveTo(-18, -6); g.lineTo(-14, 10 + Math.sin(t * 40) * 5); g.lineTo(-10, -6); g.closePath(); shape('#ffb02e', null); g.beginPath(); g.moveTo(-16, -6); g.lineTo(-14, 3); g.lineTo(-12, -6); g.closePath(); shape('#fff3b0', null); } g.beginPath(); g.roundRect(-20, -32, 11, 27, 5); shape('#c9d2e6'); g.beginPath(); g.moveTo(-20, -28); g.lineTo(-14.5, -38); g.lineTo(-9, -28); g.closePath(); shape('#e2433b'); }
+  if (k.style === 'long') { g.beginPath(); g.moveTo(-10, -58); g.bezierCurveTo(-24, -54, -22, -30, -18 + Math.sin(t * 7) * 2, -10); g.lineTo(-4, -14); g.lineTo(2, -52); g.closePath(); shape(k.hair); }
+  else if (k.style === 'pig') for (const s of [-1, 1]) { g.save(); g.translate(s * 13 - 2, -46); g.rotate(s * 0.5 + Math.sin(t * 8) * 0.15); ell(s * 4, 8, 5, 11); shape(k.hair); g.restore(); }
+  else if (k.style === 'puffs') for (const s of [-1, 1]) { ell(s * 13 - 1, -58, 8.5, 8.5); shape(k.hair); }
+  else if (k.style === 'bun') { ell(-3, -64, 7.5, 7.5); shape(k.hair); }
+  else if (k.style === 'bob') { g.beginPath(); g.moveTo(-12, -56); g.quadraticCurveTo(-19, -40, -13, -31); g.lineTo(-2, -34); g.lineTo(0, -54); g.closePath(); shape(k.hair); }
+  for (const s of [-1, 1]) { const a = (90 - s * legA) * DEG, fx = pose === 'tuck' ? 10 + s * 3 : Math.cos(a) * legL, fy = pose === 'tuck' ? 12 : Math.sin(a) * legL;
+    limb(s * 4, 0, s * 4 + fx, fy, 8, k.skin); limb(s * 4 + fx * 0.78, fy * 0.78, s * 4 + fx, fy, 8.6, k.sock); }
   const arm = s => { const a = (90 - s * armA) * DEG; limb(s * 8, -27, s * 8 + Math.cos(a) * armL, -27 + Math.sin(a) * armL, 6.5, k.skin); };
   arm(-1);
-  // body
-  if (k.dress) { g.beginPath(); g.moveTo(-9, -32); g.lineTo(9, -32); g.quadraticCurveTo(13, -12, 19, 6); g.quadraticCurveTo(0, 12, -19, 6); g.quadraticCurveTo(-13, -12, -9, -32); g.closePath(); shape(k.top); g.fillStyle = k.dots; for (const [x, y] of [[-8, -4], [6, -10], [0, -22], [12, 1], [-13, 3]]) { ell(x, y, 3.2, 3.2); g.fill(); g.fillStyle = '#7a4a1e'; ell(x, y, 1.3, 1.3); g.fill(); g.fillStyle = k.dots; } }
+  if (k.dress) { g.beginPath(); g.moveTo(-9, -32); g.lineTo(9, -32); g.quadraticCurveTo(13, -12, 19, 6); g.quadraticCurveTo(0, 12, -19, 6); g.quadraticCurveTo(-13, -12, -9, -32); g.closePath(); shape(k.top); }
   else { g.beginPath(); g.roundRect(-10, -33, 20, 30, 6); shape(k.top);
     if (k.skirt) { g.beginPath(); g.moveTo(-10, -6); g.lineTo(10, -6); g.lineTo(17, 8); g.lineTo(-17, 8); g.closePath(); shape(k.bottom); }
     else { g.beginPath(); g.roundRect(-11, -8, 22, 15, 4); shape(k.bottom); } }
+  if (k.pat === 1) { g.strokeStyle = ink; g.lineWidth = 2.6; for (const y of [-26, -19, -12]) { g.beginPath(); g.moveTo(-8.5, y); g.lineTo(8.5, y); g.stroke(); } }
+  else if (k.pat === 2) { for (const [x, y] of k.dress ? [[-8, -4], [6, -10], [0, -22], [12, 1], [-13, 3]] : [[-4, -25], [5, -17], [-3, -11]]) { g.fillStyle = '#f7b500'; ell(x, y, 3.2, 3.2); g.fill(); g.fillStyle = '#7a4a1e'; ell(x, y, 1.3, 1.3); g.fill(); } }
+  else if (k.pat === 3) { starPath(0, -19, 7.5); shape(k.top === PAL.col[3] ? '#ff5fa2' : '#ffd23f', OUT, 1); }
+  else if (k.pat === 4) { heartPath(0, -19, 5.5); shape(k.top === PAL.col[8] || k.top === PAL.col[1] ? '#fff' : '#ff5fa2', OUT, 1); }
   arm(1);
-  // head
+  if (k.hat === 4) for (const s of [-1, 1]) { g.save(); g.translate(1 + s * 6, -58); g.rotate(s * 0.22 + Math.sin(t * 6) * 0.05); ell(0, -11, 4.5, 13); shape('#fff'); ell(0, -11, 2, 9); shape('#ffb3cf', null); g.restore(); }
   ell(1, -47, 13, 13.5); shape(k.skin);
   g.beginPath();
-  if (k.style === 'long' || k.style === 'pig' || k.style === 'bun' || k.style === 'puffs') { g.moveTo(-12, -47); g.bezierCurveTo(-15, -66, 14, -67, 15, -50); g.bezierCurveTo(8, -57, 0, -58, -5, -54); g.bezierCurveTo(-8, -52, -9, -46, -10, -40); g.closePath(); shape(k.hair); }
+  if (['long', 'pig', 'bun', 'puffs', 'bob'].includes(k.style)) { g.moveTo(-12, -47); g.bezierCurveTo(-15, -66, 14, -67, 15, -50); g.bezierCurveTo(8, -57, 0, -58, -5, -54); g.bezierCurveTo(-8, -52, -9, -46, -10, -40); g.closePath(); shape(k.hair); }
   else if (k.style === 'short') { g.arc(1, -49, 13.5, PI * 1.02, PI * 2.05); g.closePath(); shape(k.hair); }
   else if (k.style === 'curly') { for (let i = 0; i < 7; i++) { const a = PI + i / 6 * PI; g.moveTo(1 + Math.cos(a) * 11 + 5.5, -50 + Math.sin(a) * 9); g.arc(1 + Math.cos(a) * 11, -50 + Math.sin(a) * 9, 5.5, 0, TAU); } shape(k.hair); }
   else if (k.style === 'spiky') { g.moveTo(-12, -48); for (let i = 0; i <= 5; i++) { g.lineTo(-12 + i * 5.2, -66 - (i % 2) * 3); g.lineTo(-9.5 + i * 5.2, -56); } g.lineTo(15, -48); g.closePath(); shape(k.hair); }
-  else if (k.style === 'cap') { g.arc(1, -50, 13.5, PI, TAU); g.closePath(); shape(k.cap); g.beginPath(); g.roundRect(-19, -52, 12, 4.5, 2); shape(k.cap); }
   g.fillStyle = '#1a2040'; ell(5, -47, 1.7, 2.3); g.fill(); ell(11, -47, 1.7, 2.3); g.fill();
   g.fillStyle = 'rgba(255,110,150,.4)'; ell(11.5, -42, 2.6, 1.8); g.fill();
   g.strokeStyle = '#a1443f'; g.lineWidth = 1.4; g.lineCap = 'round'; g.beginPath(); if (pose === 'flop') g.arc(8, -39, 2.4, PI * 1.1, PI * 1.9); else g.arc(8, -43, 3, 0.2, PI - 0.2); g.stroke();
+  // glasses
+  if (k.gl === 1) { g.strokeStyle = '#1a2040'; g.lineWidth = 1.6; ell(4.5, -47, 4, 4); g.stroke(); ell(12, -47, 4, 4); g.stroke(); g.beginPath(); g.moveTo(0.5, -47); g.lineTo(-10, -49); g.stroke(); }
+  else if (k.gl === 2) { g.beginPath(); g.roundRect(0, -51, 8.5, 7, 3); shape('#1a2040', null); g.beginPath(); g.roundRect(9.5, -51, 6.5, 7, 3); shape('#1a2040', null); g.strokeStyle = '#1a2040'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(0, -48); g.lineTo(-10, -50); g.stroke(); }
+  else if (k.gl === 3) { starPath(4.5, -47, 5.5); shape('#ffd23f', '#b8860b', 1); starPath(12.5, -47, 5); shape('#ffd23f', '#b8860b', 1); }
+  else if (k.gl === 4) { heartPath(4.5, -47, 4); shape('#ff5fa2', '#b93a6e', 1); heartPath(12.5, -47, 3.6); shape('#ff5fa2', '#b93a6e', 1); }
+  // hats
+  if (k.hat === 1) { g.beginPath(); g.arc(1, -50, 13.8, PI, TAU); g.closePath(); shape('#e2433b'); g.beginPath(); g.roundRect(-20, -52, 12, 4.5, 2); shape('#e2433b'); }
+  else if (k.hat === 2) { for (const s of [-1, 1]) { g.beginPath(); g.moveTo(0, -62); g.lineTo(s * 13, -70); g.lineTo(s * 13, -56); g.closePath(); shape('#ff5fa2'); } ell(0, -62, 3.6, 4); shape('#d93a82'); }
+  else if (k.hat === 3) for (const s of [-1, 1]) { g.beginPath(); g.moveTo(1 + s * 3, -59); g.lineTo(1 + s * 12, -71); g.lineTo(1 + s * 13, -55); g.closePath(); shape('#2a1c16'); g.beginPath(); g.moveTo(1 + s * 6, -60); g.lineTo(1 + s * 11, -67); g.lineTo(1 + s * 11.5, -58); g.closePath(); shape('#ffb3cf', null); }
+  else if (k.hat === 5) { g.beginPath(); g.moveTo(-8, -58); g.lineTo(2, -84); g.lineTo(11, -58); g.closePath(); shape('#7a4fd6'); g.strokeStyle = '#ffd23f'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(-5, -65); g.lineTo(8, -65); g.moveTo(-2, -73); g.lineTo(5, -73); g.stroke(); ell(2, -85, 3.5, 3.5); shape('#ff5fa2'); }
+  else if (k.hat === 6) { g.beginPath(); g.moveTo(-10, -57); g.lineTo(-11, -72); g.lineTo(-4, -65); g.lineTo(1.5, -75); g.lineTo(7, -65); g.lineTo(14, -72); g.lineTo(13, -57); g.closePath(); shape('#ffd23f', '#b8860b'); ell(1.5, -62, 2.2, 2.2); shape('#e2433b', null); }
+  else if (k.hat === 7) { g.beginPath(); g.moveTo(0, -58); g.lineTo(7, -84); g.lineTo(10, -57); g.closePath(); const gr = g.createLinearGradient(0, -58, 0, -84); gr.addColorStop(0, '#ff5fa2'); gr.addColorStop(0.35, '#ffd23f'); gr.addColorStop(0.7, '#6dbb4f'); gr.addColorStop(1, '#3f8cff'); shape(gr); }
   g.restore();
 }
 
 /* ---------- jumpers: you, the park friends (local), and other kids (remote) ---------- */
-function jumper(kid, x, extra) { return { kid, x, y:BEDY - HIP, vx:0, vy:-BASE * rnd(0.6, 1), dir:1, rot:0, rotLeft:0, poseT:0, pose:null, chain:0, air:true, score:0, tricks:[], flips:0, flop:0, squat:0, fx:null, ...extra }; }
+function jumper(look, name, x, extra) { return { look, k:kidOf(look), name, trail:[], x, y:BEDY - HIP, vx:0, vy:-BASE * rnd(0.6, 1), dir:1, rot:0, rotLeft:0, poseT:0, pose:null, chain:0, air:true, score:0, tricks:[], flips:0, flop:0, squat:0, fx:null, ...extra }; }
 let me = null, bots = [], peers = new Map(), playing = false, fx = [], roundNo = 0;
 const input = { left:false, right:false, pump:false, pumpAt:-9 };
 
@@ -213,7 +289,7 @@ function land(j, ctl) {
     if (unfinished) { j.flop = 0.7; v = 430; j.chain = 0; if (local) { SFX.flop(); say(j, 'Oops!', '#ff8fb0'); } }
     else {
       const kinds = j.tricks.length + (j.flips ? 1 : 0);
-      if (kinds) { const pts = (j.flips * 100 + (j.tricks.includes('star') ? 60 : 0) + (j.tricks.includes('twist') ? 80 : 0)) * kinds + (j.flips >= 2 ? 100 : 0); j.score += pts; if (local) { SFX.bank(kinds); say(j, '+' + pts + (kinds > 1 ? '  combo x' + kinds : j.flips >= 2 ? '  double!' : ''), '#ffe45c'); } }
+      if (kinds) { const pts = (j.flips * 100 + (j.tricks.includes('star') ? 60 : 0) + (j.tricks.includes('twist') ? 80 : 0)) * kinds + (j.flips >= 2 ? 100 : 0); j.score += pts; if (local) { earn(Math.floor(pts / 100)); SFX.bank(kinds); say(j, '+' + pts + (kinds > 1 ? '  combo x' + kinds : j.flips >= 2 ? '  double!' : ''), '#ffe45c'); } }
       if (ctl && ctl.pump && bed) { j.chain = Math.min(3, j.chain + 1); k = 1 + j.chain * (bed.boost ? 0.066 : 0.1); } else j.chain = 0;
     }
     j.rot = 0; j.rotLeft = 0; j.flips = 0; j.tricks = []; j.pose = null; j.poseT = 0;
@@ -231,6 +307,9 @@ function step(j, ctl, dt) {
   if (j.y >= BEDY - HIP && j.vy > 0) land(j, ctl);
 }
 const poseOf = j => j.flop > 0 ? 'flop' : j.rotLeft > 0 ? 'tuck' : j.pose ? j.pose : j.squat > 0 ? 'squat' : j.vy < 0 ? 'up' : 'down';
+let roundCoins = 0;
+function earn(n) { if (n > 0) { save.coins += n; roundCoins += n; persistSoon = true; } }
+let persistSoon = false;
 function say(j, text, color) { fx.push({ kind:'text', x:j.x, y:j.y - 80, text, color, t:0, life:1.3 }); }
 
 /* ---------- park friends: simple bots that fill the place when few kids are online ---------- */
@@ -258,7 +337,7 @@ function activeDots() { const t = now(), out = [], last = Math.floor(t / DOT_EVE
 const inPlay = t => (t % ROUND_MS) < PLAY_MS;
 function tryClaim(j, id) {
   for (const d of activeDots()) { if (claims.has(d.i)) continue; if (Math.hypot(d.x - j.x, d.y - (j.y - 22)) < 52) { claims.set(d.i, { id, ts:now() }); j.score += d.v; fx.push({ kind:'pop', x:d.x, y:d.y, t:0, life:0.5, v:d.v, mine:j === me });
-      if (j === me) { SFX.dot(d.v); say(j, '+' + d.v, '#ffe45c'); net.claim(d.i); } } }
+      if (j === me) { SFX.dot(d.v); say(j, '+' + d.v, '#ffe45c'); earn(d.v >= 250 ? 5 : d.v >= 100 ? 2 : 1); net.claim(d.i); } } }
 }
 
 /* ---------- other kids, over the wire. Nothing but numbers ever crosses: no chat, no names ---------- */
@@ -268,10 +347,11 @@ const net = (() => {
   const num = (v, a, b) => typeof v === 'number' && isFinite(v) ? clamp(v, a, b) : null;
   function onState(p) {
     if (!Array.isArray(p) || p.length < 10 || typeof p[0] !== 'string' || p[0].length > 12 || p[0] === id) return;
-    const kid = num(p[1], 0, KIDS.length - 1), x = num(p[2], 0, WW), y = num(p[3], -400, BEDY), vx = num(p[4], -600, 600), vy = num(p[5], -2000, 2000), rl = num(p[6], 0, 800), score = num(p[8], 0, 999999), dir = p[9] < 0 ? -1 : 1;
+    // an older page sends a preset number; a newer one sends the twelve look numbers and two name numbers
+    const look = typeof p[1] === 'number' ? (PRESETS[p[1] | 0] || PRESETS[0]).slice() : cleanLook(p[1]), name = cleanName([p[10], p[11]]) || null, kid = look ? 0 : null, x = num(p[2], 0, WW), y = num(p[3], -400, BEDY), vx = num(p[4], -600, 600), vy = num(p[5], -2000, 2000), rl = num(p[6], 0, 800), score = num(p[8], 0, 999999), dir = p[9] < 0 ? -1 : 1;
     if ([kid, x, y, vx, vy, rl, score].includes(null)) return;
-    let q = peers.get(p[0]); if (!q) { if (peers.size >= MAXP + 2) return; q = jumper(kid | 0, x, { remote:true, id:p[0] }); q.y = y; peers.set(p[0], q); }
-    q.kid = kid | 0; q.ex = x - q.x; q.ey = y - q.y; q.vx = vx; q.vy = vy; q.rotLeft = rl; q.dir = dir; q.score = Math.round(score); q.last = tNow;
+    let q = peers.get(p[0]); if (!q) { if (peers.size >= MAXP + 2) return; q = jumper(look, name, x, { remote:true, id:p[0] }); q.y = y; peers.set(p[0], q); }
+    if (q.look.join() !== look.join()) { q.look = look; q.k = kidOf(look); } q.name = name; q.ex = x - q.x; q.ey = y - q.y; q.vx = vx; q.vy = vy; q.rotLeft = rl; q.dir = dir; q.score = Math.round(score); q.last = tNow;
     q.pose = ['star', 'twist'].includes(p[7]) ? p[7] : null; q.poseT = q.pose ? 0.3 : 0; q.flop = p[7] === 'flop' ? 0.3 : 0;
   }
   function onClaim(p) {
@@ -296,7 +376,7 @@ const net = (() => {
       if (!moved && joinedAt && tNow - joinedAt > 1.6) { moved = true; if (peers.size >= MAXP && park < 6) { try { sb.removeChannel(ch); } catch (e) {} join(park + 1); return; } }
       if (!force && tNow - lastSend < 0.25) return; lastSend = tNow;
       const r = v => Math.round(v * 10) / 10;
-      ch.send({ type:'broadcast', event:'s', payload:[id, me.kid, r(me.x), r(me.y), r(me.vx), r(me.vy), Math.round(me.rotLeft), me.flop > 0 ? 'flop' : me.pose || '', me.score, me.dir] });
+      ch.send({ type:'broadcast', event:'s', payload:[id, me.look, r(me.x), r(me.y), r(me.vx), r(me.vy), Math.round(me.rotLeft), me.flop > 0 ? 'flop' : me.pose || '', me.score, me.dir, me.name[0], me.name[1]] });
     },
     claim(i) { if (on) ch.send({ type:'broadcast', event:'c', payload:[i, id, now()] }); },
   };
@@ -315,18 +395,20 @@ function everyone() { return [me, ...bots, ...peers.values()].filter(Boolean); }
 function update(dt) {
   tNow += dt; if (!playing) return;
   const t = now(), rn = Math.floor(t / ROUND_MS), play = inPlay(t);
-  if (rn !== roundNo) { roundNo = rn; me.score = 0; for (const b of bots) b.score = 0; claims.clear(); }
-  if (!play && !update.ended) { update.ended = true; SFX.end(); if (me.score > save.best) { save.best = me.score; persist(); } } if (play) update.ended = false;
+  if (rn !== roundNo) { roundNo = rn; me.score = 0; roundCoins = 0; for (const b of bots) b.score = 0; claims.clear(); }
+  if (!play && !update.ended) { update.ended = true; SFX.end(); const rank = everyone().sort((a, b) => b.score - a.score).indexOf(me); if (me.score > 0) earn([20, 10, 5][rank] || 2); if (me.score > save.best) save.best = me.score; persist(); } if (play) update.ended = false;
   const ctl = { left:input.left, right:input.right, pump:input.pump || tNow - input.pumpAt < 0.2 };
   step(me, ctl, dt); if (play) tryClaim(me, net.id);
   if (me.landed === tNow) net.tick(true); else net.tick(false);
   // keep about four jumpers in the park: friends step out as real kids arrive
   const want = clamp(3 - peers.size, 0, 3);
-  while (bots.length < want) { const used = new Set(everyone().map(j => j.kid)), free = KIDS.map((_, i) => i).filter(i => !used.has(i)); bots.push(jumper(free.length ? pick(free) : (Math.random() * 8 | 0), rnd(150, WW - 150), { bot:true, id:'bot' + Math.random(), think:0, tx:800 })); }
+  while (bots.length < want) { const L = pick(PRESETS).slice(); for (const sl of [8, 9, 10, 11]) if (Math.random() < 0.3) L[sl] = 1 + Math.floor(Math.random() * (LIMITS[sl] - 1)); bots.push(jumper(L, [Math.random() * N1.length | 0, Math.random() * N2.length | 0], rnd(150, WW - 150), { bot:true, id:'bot' + Math.random(), think:0, tx:800 })); }
   if (bots.length > want) bots.length = want;
   for (const b of bots) { step(b, botThink(b, dt), dt); if (play) tryClaim(b, b.id); }
   for (const [id, q] of peers) { if (tNow - q.last > 4) { peers.delete(id); continue; } stepPeer(q, dt); }
   for (const b of BEDS) b.dip = Math.max(0, b.dip - dt * 5);
+  for (const j of everyone()) { if (!j.k.tr) continue; j.trail.push({ x:j.x, y:j.y - 20, t:tNow }); while (j.trail.length && tNow - j.trail[0].t > 0.55) j.trail.shift(); }
+  if (persistSoon && (update.pt = (update.pt || 0) + dt) > 2) { update.pt = 0; persistSoon = false; persist(); }
   for (const f of fx) f.t += dt; fx = fx.filter(f => f.t < f.life);
   if (claims.size > 60) { const old = Math.floor(t / DOT_EVERY) - 10; for (const k of claims.keys()) if (k < old) claims.delete(k); }
   const view = W / S; camX += (clamp(me.x - view / 2, 0, Math.max(0, WW - view)) - camX) * Math.min(1, dt * 6); if (view >= WW) camX = (WW - view) / 2;
@@ -336,13 +418,21 @@ function update(dt) {
 
 /* ---------- drawing ---------- */
 function txt(s, x, y, size, color, align = 'center', stroke) { g.font = '400 ' + size + 'px Chewy, "Arial Rounded MT Bold", sans-serif'; g.textAlign = align; g.textBaseline = 'middle'; if (stroke) { g.lineJoin = 'round'; g.lineWidth = size * 0.2; g.strokeStyle = stroke; g.strokeText(s, x, y); } g.fillStyle = color; g.fillText(s, x, y); }
+function drawTrail(j) {
+  const n = j.trail.length; if (n < 2) return;
+  if (j.k.tr === 4) { const cols = ['#ff5f5f', '#ffd23f', '#6dbb4f', '#3f8cff', '#b58cff']; g.lineCap = 'round'; cols.forEach((c, i) => { g.strokeStyle = c; g.lineWidth = 4; g.globalAlpha = 0.75; g.beginPath(); j.trail.forEach((p, q) => { const y = p.y + (i - 2) * 4; q ? g.lineTo(p.x, y) : g.moveTo(p.x, y); }); g.stroke(); }); g.globalAlpha = 1; return; }
+  j.trail.forEach((p, q) => { if (q % 3) return; const a = 1 - (tNow - p.t) / 0.55, wob = Math.sin(q * 2.1) * 9; g.globalAlpha = clamp(a, 0, 1);
+    if (j.k.tr === 3) { heartPath(p.x + wob, p.y, 5 * a + 2); g.fillStyle = '#ff5fa2'; g.fill(); } else { starPath(p.x + wob, p.y + Math.cos(q) * 6, (j.k.tr === 2 ? 7 : 4.5) * a + 1.5); g.fillStyle = j.k.tr === 2 ? '#ffd23f' : ['#fff', '#7fe7ff', '#ffe45c'][q % 3]; g.fill(); } });
+  g.globalAlpha = 1;
+}
 function drawJumper(j, isMe) {
   const pose = poseOf(j);
   g.fillStyle = 'rgba(0,0,0,' + clamp(0.3 - (BEDY - HIP - j.y) / 1400, 0.06, 0.3) + ')'; ell(j.x, BEDY + 3, 20, 5); g.fill();
-  if (isMe) { g.fillStyle = '#ffe45c'; g.beginPath(); g.moveTo(j.x - 8, j.y - 86); g.lineTo(j.x + 8, j.y - 86); g.lineTo(j.x, j.y - 74); g.closePath(); g.fill(); }
-  g.save(); g.translate(j.x, j.y); if (pose === 'flop') g.rotate(j.dir * 80 * DEG); else g.rotate(j.rot * DEG); g.scale(j.dir, 1); drawKid(KIDS[j.kid], pose, tNow + j.x * 0.01); g.restore();
+  if (j.k.tr) drawTrail(j);
+  g.save(); g.translate(j.x, j.y); if (pose === 'flop') g.rotate(j.dir * 80 * DEG); else g.rotate(j.rot * DEG); g.scale(j.dir, 1); drawKid(j.k, pose, tNow + j.x * 0.01); g.restore();
+  if (j.name) { const label = nameText(j.name), top = j.k.hat >= 4 ? 100 : 86; g.font = '800 13px Nunito, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; const w = g.measureText(label).width + 14; g.beginPath(); g.roundRect(j.x - w / 2, j.y - top - 9, w, 18, 9); g.fillStyle = isMe ? 'rgba(255,228,92,.95)' : 'rgba(18,27,64,.6)'; g.fill(); g.fillStyle = isMe ? '#1a2040' : '#fffaf0'; g.fillText(label, j.x, j.y - top + 0.5); }
 }
-function face(kid, x, y, s) { g.save(); g.beginPath(); g.arc(x, y, 15 * s, 0, TAU); g.fillStyle = '#eef3ff'; g.fill(); g.clip(); g.translate(x - 2 * s, y + 49 * s); g.scale(s, s); drawKid(KIDS[kid], 'down', 0); g.restore(); g.beginPath(); g.arc(x, y, 15 * s, 0, TAU); g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 2; g.stroke(); }
+function face(k, x, y, s) { g.save(); g.beginPath(); g.arc(x, y, 15 * s, 0, TAU); g.fillStyle = '#eef3ff'; g.fill(); g.clip(); g.translate(x - 2 * s, y + 49 * s); g.scale(s, s); drawKid(k, 'down', 0); g.restore(); g.beginPath(); g.arc(x, y, 15 * s, 0, TAU); g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 2; g.stroke(); }
 function draw() {
   g.setTransform(DPR, 0, 0, DPR, 0, 0); g.fillStyle = '#121b40'; g.fillRect(0, 0, W, H);
   const oy = -camY * S;
@@ -378,8 +468,9 @@ function draw() {
   const all = everyone().sort((a, b) => b.score - a.score), left = PLAY_MS - (t % ROUND_MS), top = 52;
   txt(String(me.score), 16, top + 16, 40, '#ffe45c', 'left', '#121b40');
   g.font = '800 11px Nunito, sans-serif'; g.textAlign = 'left'; g.fillStyle = 'rgba(255,250,240,.75)'; g.fillText('YOUR SCORE' + (me.chain ? '   BIG BOUNCE x' + me.chain : ''), 17, top + 44);
+  ell(25, top + 64, 8, 8); g.fillStyle = '#ffd23f'; g.fill(); g.strokeStyle = '#b8860b'; g.lineWidth = 2; g.stroke(); txt(String(save.coins), 39, top + 65, 20, '#ffd23f', 'left', '#121b40');
   if (play) { txt(Math.ceil(left / 1000) + 's', W / 2, top + 10, 26, left < 10000 ? '#ff8fb0' : '#fffaf0', 'center', '#121b40'); }
-  all.slice(0, 5).forEach((j, i) => { const y = top + 6 + i * 30, x = W - 16; if (j === me) { g.beginPath(); g.roundRect(x - 104, y - 14, 108, 28, 14); g.fillStyle = 'rgba(255,228,92,.25)'; g.fill(); } face(j.kid, x - 88, y, 0.8); txt(String(j.score), x, y + 1, 20, j === me ? '#ffe45c' : '#fffaf0', 'right', '#121b40'); });
+  all.slice(0, 5).forEach((j, i) => { const y = top + 6 + i * 30, x = W - 16; if (j === me) { g.beginPath(); g.roundRect(x - 104, y - 14, 108, 28, 14); g.fillStyle = 'rgba(255,228,92,.25)'; g.fill(); } face(j.k, x - 88, y, 0.8); txt(String(j.score), x, y + 1, 20, j === me ? '#ffe45c' : '#fffaf0', 'right', '#121b40'); });
   g.font = '800 11px Nunito, sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,250,240,.6)';
   g.fillText(net.on ? (peers.size ? peers.size + (peers.size === 1 ? ' other kid' : ' other kids') + ' in the park' : 'No other kids right now. Park friends are jumping with you.') : 'Jumping with park friends', W / 2, top + (play ? 32 : 10));
   if (!play) { // podium between rounds
@@ -387,8 +478,8 @@ function draw() {
     g.beginPath(); g.roundRect(cx - 170, cy - 120, 340, 250, 22); g.fillStyle = 'rgba(18,27,64,.9)'; g.fill(); g.strokeStyle = '#ffe45c'; g.lineWidth = 3; g.stroke();
     txt('Round over!', cx, cy - 88, 34, '#ffe45c');
     [[1, -100, 46], [0, 0, 70], [2, 100, 30]].forEach(([rank, dx, h]) => { const j = all[rank]; g.beginPath(); g.roundRect(cx + dx - 44, cy + 80 - h, 88, h, 6); g.fillStyle = ['#ffd23f', '#c9d2e6', '#e0a070'][rank]; g.fill(); txt(String(rank + 1), cx + dx, cy + 80 - h / 2, 22, '#1a2040');
-      if (j) { g.save(); g.translate(cx + dx, cy + 80 - h - 38 - Math.abs(Math.sin(tNow * 5 + rank)) * (rank === 0 ? 14 : 5)); drawKid(KIDS[j.kid], rank === 0 ? 'star' : 'up', tNow); g.restore(); txt(String(j.score), cx + dx, cy + 98, 18, j === me ? '#ffe45c' : '#fffaf0'); } });
-    g.font = '800 12px Nunito, sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,250,240,.8)'; g.fillText('Next round in ' + next + 's. Keep bouncing!', cx, cy + 120);
+      if (j) { g.save(); g.translate(cx + dx, cy + 80 - h - 38 - Math.abs(Math.sin(tNow * 5 + rank)) * (rank === 0 ? 14 : 5)); drawKid(j.k, rank === 0 ? 'star' : 'up', tNow); g.restore(); txt(String(j.score), cx + dx, cy + 98, 18, j === me ? '#ffe45c' : '#fffaf0'); } });
+    g.font = '800 12px Nunito, sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,250,240,.8)'; g.fillText((roundCoins ? 'You earned ' + roundCoins + ' coins. ' : '') + 'Next round in ' + next + 's.', cx, cy + 120);
   }
 }
 
@@ -410,18 +501,66 @@ cv.addEventListener('touchstart', e => e.preventDefault(), { passive:false });
 document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive:false });
 for (const ev of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) document.addEventListener(ev, e => e.preventDefault(), { passive:false });
 
-const pv = [];
-function buildKids() { const box = $('kids'); KIDS.forEach((k, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'kid'; b.id = 'kid-' + i; b.setAttribute('aria-pressed', String(save.kid === i)); b.setAttribute('aria-label', (k.girl ? 'Girl ' : 'Boy ') + (i % 4 + 1)); b.innerHTML = '<canvas width="200" height="200"></canvas>';
-  b.addEventListener('click', () => { save.kid = i; persist(); audio(); SFX.boing(1.2); for (const o of box.children) o.setAttribute('aria-pressed', String(o === b)); }); box.appendChild(b); pv.push(b.firstChild.getContext('2d')); }); }
-function previews() { if ($('start').hidden) return; const o = g; pv.forEach((c, i) => { g = c; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, 200, 200); const sel = save.kid === i, ph = (tNow * 1.6 + i * 0.37) % 1, h = Math.sin(ph * PI) * (sel ? 30 : 14); g.fillStyle = '#19c2b0'; g.beginPath(); g.roundRect(40, 176, 120, 10, 5); g.fill(); g.setTransform(1.5, 0, 0, 1.5, 100, 119 - h); if (sel && ph > 0.25 && ph < 0.75) g.rotate((ph - 0.25) * 2 * TAU); drawKid(KIDS[i], sel && ph > 0.25 && ph < 0.75 ? 'tuck' : ph < 0.5 ? 'up' : 'down', tNow); }); g = o; }
-function start() { audio(); me = jumper(save.kid, rnd(300, 1300)); bots = []; fx = []; roundNo = Math.floor(now() / ROUND_MS); playing = true; for (const id of ['tl', 'tr', 'padl', 'padr']) $(id).hidden = false; $('start').hidden = true; net.start(); cv.focus(); }
-function menu() { playing = false; net.stop(); me = null; for (const id of ['tl', 'tr', 'padl', 'padr']) $(id).hidden = true; $('start').hidden = false; }
+/* ---------- my kid: looks, name and the shop ---------- */
+let tab = 'Looks', asking = null; const tiles = [];
+const owns = it => save.owned.includes(it.id);
+function setLook(slot, v) { save.look[slot] = v; persist(); if (me) { me.look = save.look.slice(); me.k = kidOf(me.look); } renderPanel(); }
+function swatches(title, slot, colors) { return '<div class="grp"><b>' + title + '</b><div class="sw">' + colors.map((c, i) => '<button type="button" style="--c:' + c + '" data-slot="' + slot + '" data-v="' + i + '" aria-pressed="' + (save.look[slot] === i) + '" aria-label="' + title + ' ' + (i + 1) + '"></button>').join('') + '</div></div>'; }
+function tileHTML(key, label, small, pressed, cls = '') { return '<button type="button" class="tile ' + cls + '" data-key="' + key + '" aria-pressed="' + pressed + '"><canvas width="150" height="150"></canvas>' + label + (small ? '<small>' + small + '</small>' : '') + '</button>'; }
+function renderPanel() {
+  const P = $('panel'); let h = ''; const plan = [];   // plan: what each tile's little picture shows
+  if (tab === 'Looks') {
+    h += swatches('Skin', 0, PAL.skin) + '<div class="grp"><b>Hair</b><div class="tiles">' + STYLES.map((st, i) => { plan.push(L => { L[1] = i; }); return tileHTML('s1:' + i, '', '', save.look[1] === i); }).join('') + '</div></div>' + swatches('Hair colour', 2, PAL.hair);
+  } else if (tab === 'Clothes') {
+    h += swatches('Top', 3, PAL.col) + '<div class="grp"><b>Bottoms</b><div class="sw">' + ['Shorts', 'Skirt', 'Dress'].map((n, i) => '<button type="button" class="txt" data-slot="5" data-v="' + i + '" aria-pressed="' + (save.look[5] === i) + '">' + n + '</button>').join('') + '</div></div>'
+      + swatches('Bottoms colour', 6, PAL.col) + swatches('Socks', 7, PAL.col)
+      + '<div class="grp"><b>Shirt picture</b><div class="tiles">' + ['Plain', 'Stripes', 'Sunflowers'].map((n, i) => { plan.push(L => { L[4] = i; }); return tileHTML('s4:' + i, n, '', save.look[4] === i); }).join('') + '</div></div>';
+  } else if (tab === 'Shop') {
+    for (const grp of [...new Set(SHOP.map(i => i.group))]) { h += '<div class="grp"><b>' + grp + '</b><div class="tiles">';
+      for (const it of SHOP.filter(i => i.group === grp)) { const own = owns(it), on = save.look[it.slot] === it.v; plan.push(L => { L[it.slot] = it.v; }); h += tileHTML('shop:' + it.id, it.name, own ? (on ? 'Wearing' : 'Yours') : asking === it.id ? 'Tap again to buy' : it.price + ' coins', on, (own ? 'own' : '') + (asking === it.id ? ' ask' : '')); }
+      h += '</div></div>'; }
+  } else { h += '<div class="grp"><b>Start from one of these</b><div class="tiles">' + PRESETS.map((pr, i) => { plan.push(L => { for (let q = 0; q < 8; q++) L[q] = pr[q]; }); return tileHTML('pre:' + i, '', '', false); }).join('') + '</div></div>'; }
+  P.innerHTML = h; tiles.length = 0;
+  P.querySelectorAll('.tile canvas').forEach((c, i) => { const L = save.look.slice(); plan[i](L); tiles.push({ ctx:c.getContext('2d'), k:kidOf(L) }); });
+  const o = g; for (const tl of tiles) { g = tl.ctx; g.setTransform(1.45, 0, 0, 1.45, 75, 104); drawKid(tl.k, 'down', 0.3); if (tl.k.tr) { g.fillStyle = '#ffd23f'; for (let q = 0; q < 4; q++) { starPath(-30 + q * 7, 20 - q * 12, 5 - q * 0.7); if (tl.k.tr === 3) heartPath(-30 + q * 7, 20 - q * 12, 4); g.fillStyle = tl.k.tr === 4 ? ['#ff5f5f', '#ffd23f', '#6dbb4f', '#3f8cff'][q] : tl.k.tr === 3 ? '#ff5fa2' : '#ffd23f'; g.fill(); } } } g = o;
+  $('coins').textContent = save.coins; $('nm').textContent = nameText(save.name);
+  for (const b of $('tabs').children) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
+}
+function shopMsg(m) { $('shopmsg').textContent = m; clearTimeout(shopMsg.t); shopMsg.t = setTimeout(() => { $('shopmsg').textContent = ''; }, 2600); }
+$('panel').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; audio();
+  if (b.dataset.slot) { SFX.trick(); setLook(+b.dataset.slot, +b.dataset.v); return; }
+  const [kind, v] = (b.dataset.key || '').split(':');
+  if (kind === 's1' || kind === 's4') { SFX.trick(); setLook(kind === 's1' ? 1 : 4, +v); }
+  else if (kind === 'pre') { SFX.boing(1.2); const pr = PRESETS[+v]; for (let q = 0; q < 8; q++) save.look[q] = pr[q]; setLook(0, pr[0]); }
+  else if (kind === 'shop') { const it = SHOP.find(i => i.id === v);
+    if (owns(it)) { asking = null; SFX.trick(); setLook(it.slot, save.look[it.slot] === it.v ? 0 : it.v); }
+    else if (save.coins < it.price) { asking = null; SFX.late(); shopMsg('You need ' + (it.price - save.coins) + ' more coins for the ' + it.name.toLowerCase() + '. Go jump!'); renderPanel(); const el = $('panel').querySelector('[data-key="shop:' + it.id + '"]'); if (el) el.classList.add('no'); }
+    else if (asking !== it.id) { asking = it.id; SFX.trick(); renderPanel(); }
+    else { asking = null; save.coins -= it.price; save.owned.push(it.id); SFX.bank(3); shopMsg('You bought the ' + it.name.toLowerCase() + '!'); setLook(it.slot, it.v); } }
+});
+function buildEditor() {
+  $('tabs').innerHTML = ['Looks', 'Clothes', 'Shop', 'Quick picks'].map(t => '<button type="button" class="tab" role="tab" data-tab="' + t + '">' + t + '</button>').join('');
+  $('tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) { tab = b.dataset.tab; asking = null; renderPanel(); } });
+  $('n1').innerHTML = N1.map((n, i) => '<option value="' + i + '">' + n + '</option>').join(''); $('n2').innerHTML = N2.map((n, i) => '<option value="' + i + '">' + n + '</option>').join('');
+  const syncName = () => { $('n1').value = save.name[0]; $('n2').value = save.name[1]; $('nm').textContent = nameText(save.name); if (me) me.name = save.name.slice(); persist(); };
+  $('n1').addEventListener('change', () => { save.name[0] = +$('n1').value; syncName(); }); $('n2').addEventListener('change', () => { save.name[1] = +$('n2').value; syncName(); });
+  $('dice').addEventListener('click', () => { audio(); SFX.boing(1.3); save.name = [Math.random() * N1.length | 0, Math.random() * N2.length | 0]; syncName(); });
+  if (!save.named) { save.named = true; save.name = [Math.random() * N1.length | 0, Math.random() * N2.length | 0]; }
+  syncName(); renderPanel();
+}
+const mecx = $('mecv').getContext('2d');
+function previews() { if ($('start').hidden) return; const o = g; g = mecx; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, 300, 330); const ph = (tNow * 1.1) % 1, h = Math.sin(ph * PI) * 70, k = kidOf(save.look);
+  g.fillStyle = '#3b4c9a'; g.beginPath(); g.roundRect(50, 286, 200, 18, 8); g.fill(); g.fillStyle = '#19c2b0'; g.beginPath(); g.roundRect(60, 284, 180, 9, 4); g.fill();
+  g.setTransform(2.2, 0, 0, 2.2, 150, 198 - h); const flip = ph > 0.2 && ph < 0.8 && Math.floor(tNow * 1.1) % 3 === 2; if (flip) g.rotate((ph - 0.2) / 0.6 * TAU); drawKid(k, flip ? 'tuck' : ph < 0.12 ? 'squat' : ph < 0.5 ? 'up' : 'down', tNow); g = o; }
+function start() { audio(); me = jumper(save.look.slice(), save.name.slice(), rnd(300, 1300)); bots = []; fx = []; roundNo = Math.floor(now() / ROUND_MS); roundCoins = 0; playing = true; for (const id of ['tl', 'tr', 'padl', 'padr']) $(id).hidden = false; $('start').hidden = true; net.start(); cv.focus(); }
+function menu() { playing = false; net.stop(); me = null; persist(); asking = null; renderPanel(); for (const id of ['tl', 'tr', 'padl', 'padr']) $(id).hidden = true; $('start').hidden = false; }
 $('go').addEventListener('click', start); $('b-menu').addEventListener('click', menu);
 const sb = $('sound'), paint = () => { sb.textContent = save.sound ? 'Sound on' : 'Sound off'; sb.setAttribute('aria-pressed', String(save.sound)); };
 sb.addEventListener('click', () => { save.sound = !save.sound; persist(); paint(); if (save.sound) { audio(); SFX.boing(1); } });
 cv.tabIndex = -1; cv.style.outline = 'none';
-buildKids(); paint(); resize(); requestAnimationFrame(frame);
-window.__tramp = { get me() { return me; }, get bots() { return bots; }, peers, net, input, doTrick, update, start, save, claims, activeDots, KIDS, setClock:o => { clockOff = o; } };   // for tests
+buildEditor(); paint(); resize(); requestAnimationFrame(frame);
+window.__tramp = { get me() { return me; }, get bots() { return bots; }, peers, net, input, doTrick, update, start, save, claims, activeDots, PRESETS, SHOP, N1, N2, earn, renderPanel, setClock:o => { clockOff = o; } };   // for tests
 })();
 </script>
 </body>
