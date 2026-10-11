@@ -10,6 +10,9 @@ const VOICE = Deno.env.get('PIP_VOICE') ?? 'cgSgspJ2msm6clMCkdW9';
 const TALK_MODEL = Deno.env.get('MAKER_TALK_MODEL') ?? 'claude-haiku-5-5';
 const BUILD_MODEL = Deno.env.get('MAKER_BUILD_MODEL') ?? 'claude-sonnet-5-5';
 
+const SB_URL = Deno.env.get('SUPABASE_URL') ?? '', SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const db = (path: string, init: RequestInit = {}) => fetch(`${SB_URL}/rest/v1/${path}`, { ...init, headers: { apikey: SB_KEY, authorization: `Bearer ${SB_KEY}`, 'content-type': 'application/json', ...(init.headers ?? {}) } });
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type, x-maker-pass', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Max-Age': '86400' };
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 const clip = (s: unknown, n: number) => String(s ?? '').slice(0, n);
@@ -103,9 +106,25 @@ async function claude(body: Record<string, unknown>) {
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
-  if (!PASS || req.headers.get('x-maker-pass') !== PASS) { await new Promise(r => setTimeout(r, 600)); return json({ error: 'passcode' }, 401); }
-  const op = new URL(req.url).searchParams.get('op') ?? '';
+  const url = new URL(req.url), op = url.searchParams.get('op') ?? '';
   try {
+    // ---- public: the Wished Games shelf (no passcode, read only) ----
+    if (op === 'list') { const r = await db('wished_games?select=id,name,icon,how,created_at&hidden=eq.false&order=created_at.desc&limit=200'); return json({ games: r.ok ? await r.json() : [] }); }
+    if (op === 'get') { const { id } = await req.json(); if (!UUID.test(String(id))) return json({ error: 'bad id' }, 400); const r = await db(`wished_games?select=id,name,icon,how,pre,code,music_url&hidden=eq.false&id=eq.${id}`); const rows = r.ok ? await r.json() : []; return rows[0] ? json(rows[0]) : json({ error: 'not found' }, 404); }
+  } catch (e) { return json({ error: clip((e as Error)?.message, 200) }, 500); }
+  if (!PASS || req.headers.get('x-maker-pass') !== PASS) { await new Promise(r => setTimeout(r, 600)); return json({ error: 'passcode' }, 401); }
+  try {
+    // ---- grown-up only: publish / unpublish ----
+    if (op === 'publish') { const b = await req.json(); const row = { name: clip(b.name, 60).trim() || 'A Wished Game', icon: clip(b.icon, 16) || '🎮', how: clip(b.how, 200), pre: clip(b.pre, 40000), code: clip(b.code, 60000), updated_at: new Date().toISOString() };
+      if (row.code.length < 20) return json({ error: 'no code' }, 400);
+      if (UUID.test(String(b.id))) { const r = await db(`wished_games?id=eq.${b.id}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify(row) }); const rows = r.ok ? await r.json() : []; if (rows[0]) return json({ id: rows[0].id }); }
+      const c = await db('wished_games?select=id', { method: 'HEAD', headers: { prefer: 'count=exact' } }); if (Number((c.headers.get('content-range') ?? '').split('/')[1] ?? 0) >= 300) return json({ error: 'The shelf is full (300 games).' }, 409);
+      const r = await db('wished_games', { method: 'POST', headers: { prefer: 'return=representation' }, body: JSON.stringify(row) }); const rows = await r.json(); if (!r.ok || !rows[0]) return json({ error: `publish ${r.status}: ${clip(JSON.stringify(rows), 200)}` }, 502); return json({ id: rows[0].id }); }
+    if (op === 'pubmusic') { const id = url.searchParams.get('id') ?? ''; if (!UUID.test(id)) return json({ error: 'bad id' }, 400); const buf = await req.arrayBuffer(); if (buf.byteLength < 1000 || buf.byteLength > 2_000_000) return json({ error: 'bad size' }, 413);
+      const up = await fetch(`${SB_URL}/storage/v1/object/wished-music/${id}.mp3`, { method: 'POST', headers: { authorization: `Bearer ${SB_KEY}`, apikey: SB_KEY, 'content-type': 'audio/mpeg', 'x-upsert': 'true', 'cache-control': 'max-age=31536000' }, body: buf }); if (!up.ok) return json({ error: `music ${up.status}: ${clip(await up.text(), 200)}` }, 502);
+      const music_url = `${SB_URL}/storage/v1/object/public/wished-music/${id}.mp3?v=${Date.now()}`; await db(`wished_games?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ music_url }) }); return json({ music_url }); }
+    if (op === 'unpublish') { const { id } = await req.json(); if (!UUID.test(String(id))) return json({ error: 'bad id' }, 400); await db(`wished_games?id=eq.${id}`, { method: 'DELETE' }); await fetch(`${SB_URL}/storage/v1/object/wished-music/${id}.mp3`, { method: 'DELETE', headers: { authorization: `Bearer ${SB_KEY}`, apikey: SB_KEY } }); return json({ ok: true }); }
+
     if (op === 'ping') return json({ ok: true, voice: !!EL, brain: !!AK });
 
     if (op === 'log') { const b = await req.json(); console.log('MAKERLOG ' + JSON.stringify({ stage: clip(b.stage, 20), error: clip(b.error, 400), ua: clip(b.ua, 160), code: clip(b.code, 6000) })); return json({ ok: true }); }

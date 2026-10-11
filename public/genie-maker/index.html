@@ -149,6 +149,7 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
     <h3>Last conversation</h3>
     <pre id="gTalk">—</pre>
     <h3>Saved games</h3>
+    <div style="font-size:13px;color:#6b6480">Publishing puts a game on the public Wished Games shelf at maplesworld.org/wished/, where anyone can play it. Only the name, icon, game code and music are stored. Editing a game here does not change the published copy until you press Update.</div>
     <div id="savedList"></div>
     <div style="margin-top:14px"><button class="btn go" id="grownClose">Done</button> <button class="btn" id="forget">Forget passcode</button></div>
   </div>
@@ -562,7 +563,7 @@ async function doBuild(req) { busy = true; const prev = cur, isNew = !prev || re
       try { res = await streamBuild(b2); gm = assemble(res, rq, id); await launch(gm); lastErr = null; break; }
       catch (err) { if (err.message === 'passcode') throw err; lastErr = String(err.message); fails.push({ stage: 'try' + attempt, error: lastErr, code: gm && gm.code }); report('try' + attempt, lastErr, res ? res.code : ''); gm = null; } }
     if (!gm) throw new Error(lastErr || 'build failed');
-    clearInterval(filler); if (!isNew && prev) gm.music = prev.music; cur = gm; cur.fixed = !!req.error; const i = S.games.findIndex(x => x.id === id); const sv = { id, name: gm.name, icon: gm.icon, brief: gm.brief, how: gm.how, music: gm.music, pre: gm.pre, code: gm.code, uses: gm.uses }; if (i >= 0) S.games[i] = sv; else { S.games.unshift(sv); for (const x of S.games.splice(8)) idbDel(x.id); } save();
+    clearInterval(filler); if (!isNew && prev) gm.music = prev.music; cur = gm; cur.fixed = !!req.error; const i = S.games.findIndex(x => x.id === id); const sv = { id, name: gm.name, icon: gm.icon, brief: gm.brief, how: gm.how, music: gm.music, pre: gm.pre, code: gm.code, uses: gm.uses, pub: i >= 0 ? S.games[i].pub : undefined, pubStale: i >= 0 && !!S.games[i].pub }; if (i >= 0) S.games[i] = sv; else { S.games.unshift(sv); for (const x of S.games.splice(8)) idbDel(x.id); } save();
     if (musicP) musicP.then(ab => { if (ab) { idbPut(id, ab); if (cur && cur.id === id) playMusic(ab); } });
     busy = false; M.change = false; hush(); sfx.magic(); show('play'); $('hudName').textContent = gm.name; caption(gm.how); say(gm.how);
   } catch (e) { clearInterval(filler); busy = false; if (e.message === 'passcode') return; lastError = String(e.message); fails.push({ stage: 'final', error: lastError }); report('final', lastError, '');
@@ -603,7 +604,16 @@ function renderGrown() { for (const [id, k] of [['optVoice', 'voice'], ['optMusi
   const pl = $('partList'); pl.innerHTML = ''; if (!S.parts.length) pl.textContent = 'Empty so far.'; else { const ul = document.createElement('ul'); for (const p of S.parts) { const li = document.createElement('li'); li.textContent = `${p.name}: ${p.about}`; ul.appendChild(li); } pl.appendChild(ul); }
   $('gTalk').textContent = lastTalk.length ? lastTalk.map(m => `${m.role === 'user' ? 'Child' : 'Pip'}: ${m.content}`).join('\n') : '—';
   const sl = $('savedList'); sl.innerHTML = ''; if (!S.games.length) sl.textContent = 'None yet.';
-  for (const y of S.games) { const d = document.createElement('div'); d.textContent = `${y.icon} ${y.name} `; const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Delete'; b.onclick = () => { S.games = S.games.filter(z => z !== y); idbDel(y.id); save(); renderGrown(); renderShelf(); }; d.appendChild(b); sl.appendChild(d); } }
+  for (const y of S.games) { const d = document.createElement('div'); d.style.margin = '6px 0'; d.textContent = `${y.icon} ${y.name} ${y.pub ? (y.pubStale ? '(on Wished Games, older version) ' : '(on Wished Games) ') : ''}`;
+    const mk = (t, fn, go) => { const b = document.createElement('button'); b.className = 'btn' + (go ? ' go' : ''); b.textContent = t; b.onclick = fn; d.appendChild(b); return b; };
+    mk(y.pub ? 'Update on Wished Games' : 'Publish to Wished Games', e => publish(y, e.target), true);
+    if (y.pub) mk('Unpublish', async e => { e.target.textContent = 'Removing…'; try { await api('unpublish', { id: y.pub }); y.pub = undefined; y.pubStale = false; save(); } catch (err) {} renderGrown(); });
+    mk('Delete', () => { if (y.pub && !confirm('This deletes it from this device only. It stays on Wished Games until you unpublish it. Delete?')) return; S.games = S.games.filter(z => z !== y); idbDel(y.id); save(); renderGrown(); renderShelf(); });
+    sl.appendChild(d); } }
+async function publish(y, btn) { btn.textContent = 'Publishing…'; btn.disabled = true;
+  try { const r = await api('publish', { id: y.pub, name: y.name, icon: y.icon, how: y.how, pre: y.pre, code: y.code }); const j = await r.json(); if (!r.ok || !j.id) throw new Error(j.error || 'publish failed');
+    y.pub = j.id; y.pubStale = false; save(); const ab = await idbGet(y.id); if (ab) { try { await api('pubmusic&id=' + j.id, null, new Blob([ab], { type: 'audio/mpeg' })); } catch (e) {} }
+    renderGrown(); } catch (e) { btn.disabled = false; btn.textContent = 'Could not publish: ' + String(e.message).slice(0, 60); } }
 let lastGame = null, lastTalk = [];
 function openGrown() { hush(); renderGrown(); $('grown').hidden = false; }
 $('grownClose').onclick = () => { $('grown').hidden = true; };
