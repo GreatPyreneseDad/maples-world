@@ -12,128 +12,150 @@
 [hidden]{display:none!important}
 html,body{margin:0;height:100%;overflow:hidden;background:#2a1f5c;font-family:'Baloo 2',system-ui,sans-serif;color:#3a2a55;touch-action:none;user-select:none;-webkit-user-select:none}
 #stage{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#frame.off{opacity:0;pointer-events:none}
+#frame{position:fixed;inset:0;width:100%;height:100%;border:0;background:#2a1f5c}
 button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
 .layer{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));pointer-events:none}
 .layer>*{pointer-events:auto}
-/* home */
-#home h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shadow:0 3px 0 #6a3fd0,0 6px 18px rgba(0,0,0,.35);line-height:1}
-#home .tag{color:#ffe38a;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
-#home .sp{flex:1;min-height:150px}
+h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shadow:0 3px 0 #6a3fd0,0 6px 18px rgba(0,0,0,.35);line-height:1}
+.tag{color:#ffe38a;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+.grow{flex:1;min-height:120px}
 .big{background:linear-gradient(#ffd84d,#ffb02e);border-radius:28px;padding:14px 34px;font-size:clamp(24px,6vw,34px);font-weight:800;color:#5a3200;box-shadow:0 6px 0 #c97a00,0 12px 24px rgba(0,0,0,.3)}
 .big:active{transform:translateY(4px);box-shadow:0 2px 0 #c97a00}
 #shelfT{color:#e6dcff;font-weight:700;margin:16px 0 6px;font-size:16px}
 #shelf{display:flex;gap:10px;overflow-x:auto;max-width:100%;padding:4px 4px 10px;touch-action:pan-x}
-#gear{position:fixed;right:10px;top:calc(10px + env(safe-area-inset-top));width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:22px;pointer-events:auto}
-#gearHint{position:fixed;right:62px;top:calc(20px + env(safe-area-inset-top));color:#e6dcff;font-size:13px;font-weight:700;opacity:0;transition:opacity .2s}
+.tile{flex:none;width:104px;background:#fff;border-radius:22px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;font-weight:800;font-size:13px;line-height:1.1;box-shadow:0 5px 0 #c9b7f5}
+.tile .emo{font-size:46px;height:62px;line-height:62px}
+.rnd{width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.92);font-size:25px;box-shadow:0 4px 0 rgba(0,0,0,.2);padding:0}
+#gear{position:fixed;right:10px;top:calc(10px + env(safe-area-inset-top));background:rgba(255,255,255,.16);color:#fff;box-shadow:none}
+#gearHint{position:fixed;right:70px;top:calc(24px + env(safe-area-inset-top));color:#e6dcff;font-size:13px;font-weight:700;opacity:0;transition:opacity .2s}
 #gearHint.on{opacity:1}
+/* gate */
+#gate{justify-content:center;gap:12px;background:#2a1f5c}
+#gate input{font:inherit;font-size:22px;font-weight:700;text-align:center;border:0;border-radius:16px;padding:10px 14px;width:240px}
+#gate p{color:#e6dcff;margin:0;text-align:center;max-width:340px;font-weight:500}
+#gateMsg{color:#ffb3c7!important;min-height:22px;font-weight:700!important}
 /* talk */
-#talk .sp{flex:0 0 clamp(150px,34vh,300px)}
+#talk .sp{flex:0 0 clamp(150px,36vh,320px)}
 #bubble{background:#fff;border-radius:24px;padding:12px 20px;font-size:clamp(20px,4.6vw,28px);font-weight:700;text-align:center;max-width:640px;box-shadow:0 6px 0 rgba(0,0,0,.14);position:relative;line-height:1.2}
 #bubble:before{content:"";position:absolute;left:50%;top:-14px;margin-left:-12px;border:12px solid transparent;border-top:0;border-bottom:16px solid #fff}
-#heard{min-height:22px;color:#ffe38a;font-weight:700;font-size:15px;margin:6px 0 2px;text-align:center}
-#tiles{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:flex-start;max-width:760px;overflow-y:auto;flex:1;padding:6px 2px 80px;touch-action:pan-y;width:100%}
-.tile{width:clamp(88px,22vw,112px);background:#fff;border-radius:22px;padding:6px 4px 4px;display:flex;flex-direction:column;align-items:center;font-weight:800;font-size:16px;line-height:1.1;box-shadow:0 5px 0 #c9b7f5}
-.tile:active{transform:translateY(3px);box-shadow:0 2px 0 #c9b7f5}
-.tile canvas{width:76px;height:76px}
-.tile .emo{font-size:46px;height:76px;line-height:76px}
-.tile.alt{background:#fff3c4;box-shadow:0 5px 0 #e6c35a}
-#mic{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);width:74px;height:74px;border-radius:50%;background:#ff6b9d;color:#fff;font-size:34px;box-shadow:0 5px 0 #c63f72,0 10px 20px rgba(0,0,0,.3);pointer-events:auto}
-#mic.on{background:#35c98a;box-shadow:0 5px 0 #1f9762,0 0 0 10px rgba(53,201,138,.3);animation:pulse 1s infinite}
-@keyframes pulse{50%{box-shadow:0 5px 0 #1f9762,0 0 0 20px rgba(53,201,138,.12)}}
-#back{position:fixed;left:10px;top:calc(10px + env(safe-area-inset-top));width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.9);font-size:26px;pointer-events:auto;box-shadow:0 4px 0 rgba(0,0,0,.2)}
+#heard{min-height:26px;color:#ffe38a;font-weight:700;font-size:17px;margin:10px 0 2px;text-align:center;max-width:640px}
+#micRow{display:flex;align-items:center;gap:22px;margin-top:auto;margin-bottom:8px}
+#mic{width:112px;height:112px;border-radius:50%;background:#ff6b9d;color:#fff;font-size:50px;box-shadow:0 6px 0 #c63f72,0 12px 24px rgba(0,0,0,.3);position:relative;transition:background .15s}
+#mic:after{content:"";position:absolute;inset:-10px;border-radius:50%;border:5px solid rgba(255,255,255,0);transform:scale(var(--lv,1));transition:transform .08s}
+#mic.on{background:#35c98a;box-shadow:0 6px 0 #1f9762,0 12px 24px rgba(0,0,0,.3)}
+#mic.on:after{border-color:rgba(160,255,210,.75)}
+#mic.think{background:#b58cff;box-shadow:0 6px 0 #7d55c9;animation:spin 1.1s linear infinite}
+#mic.talk{background:#8f86b5;box-shadow:0 6px 0 #5f577f}
+#mic.idle{animation:nudge 1.6s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes nudge{50%{transform:scale(1.07)}}
+#micHint{color:#e6dcff;font-weight:700;font-size:15px;min-height:22px;margin-bottom:4px;text-align:center}
+#typeRow{display:flex;gap:8px;width:100%;max-width:520px;margin-bottom:6px}
+#typeIn{flex:1;font:inherit;font-size:17px;border:0;border-radius:14px;padding:8px 12px;user-select:text;-webkit-user-select:text}
+#typeGo{background:#ffd84d;border-radius:14px;padding:0 16px;font-weight:800}
+#back{position:fixed;left:10px;top:calc(10px + env(safe-area-inset-top))}
+/* build */
+#build{justify-content:flex-end;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+#buildSay{background:#fff;border-radius:24px;padding:12px 20px;font-size:clamp(20px,4.6vw,26px);font-weight:700;text-align:center;max-width:560px}
+#bar{width:min(420px,80vw);height:18px;border-radius:9px;background:rgba(255,255,255,.25);margin-top:14px;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff9ed2,#ffe14d,#7fd4ff);border-radius:9px;transition:width .4s}
 /* play */
 #hud{pointer-events:none}
 #hud button{pointer-events:auto}
-#hudName{margin-top:2px;background:rgba(255,255,255,.85);border-radius:16px;padding:2px 14px;font-weight:800;font-size:15px;max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#homeBtn{position:fixed;left:10px;top:calc(10px + env(safe-area-inset-top))}
+#hudName{margin-top:6px;background:rgba(255,255,255,.85);border-radius:16px;padding:2px 14px;font-weight:800;font-size:15px;max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #wand{position:fixed;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));width:84px;height:84px;border-radius:50%;background:#fff;box-shadow:0 5px 0 #c9b7f5,0 10px 20px rgba(0,0,0,.25);padding:0}
 #wand canvas{width:84px;height:84px;border-radius:50%}
-#win{justify-content:flex-end;padding-bottom:calc(60px + env(safe-area-inset-bottom));pointer-events:none}
-#win .row{display:flex;gap:16px;align-items:center}
-.rnd{width:74px;height:74px;border-radius:50%;background:#fff;font-size:34px;box-shadow:0 5px 0 #c9b7f5}
+#cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(112px + env(safe-area-inset-bottom));background:rgba(255,255,255,.94);border-radius:18px;padding:6px 16px;font-weight:800;font-size:19px;width:max-content;max-width:86vw;text-align:center;pointer-events:none;transition:opacity .4s;opacity:0;z-index:3}
 /* grown-ups */
 #grown{background:rgba(26,18,60,.82);justify-content:center;pointer-events:auto;z-index:9;touch-action:pan-y}
-#grown .card{background:#fff;border-radius:22px;max-width:620px;width:100%;max-height:92vh;overflow:auto;padding:18px 20px;font-size:15px;font-weight:500;user-select:text;-webkit-user-select:text;touch-action:pan-y}
+#grown .card{background:#fff;border-radius:22px;max-width:680px;width:100%;max-height:92vh;overflow:auto;padding:18px 20px;font-size:15px;font-weight:500;user-select:text;-webkit-user-select:text;touch-action:pan-y}
 #grown h2{margin:0 0 4px;font-size:22px}
 #grown h3{margin:16px 0 4px;font-size:16px;color:#6a3fd0}
-#grown label{display:flex;gap:10px;align-items:flex-start;margin:8px 0;font-weight:700}
-#grown label small{display:block;font-weight:500;color:#6b6480}
-#grown input[type=checkbox]{width:22px;height:22px;flex:none;margin-top:2px}
-#grown pre{background:#f4f0ff;border-radius:12px;padding:10px;font-size:12.5px;white-space:pre-wrap;word-break:break-word;margin:4px 0}
+#grown label{display:flex;gap:10px;align-items:center;margin:8px 0;font-weight:700}
+#grown input[type=checkbox]{width:22px;height:22px;flex:none}
+#grown pre{background:#f4f0ff;border-radius:12px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-word;margin:4px 0;max-height:260px;overflow:auto}
 #grown .btn{background:#ece6ff;border-radius:12px;padding:6px 14px;font-weight:700;margin:4px 6px 0 0}
 #grown .btn.go{background:#6a3fd0;color:#fff}
-#grown input[type=text]{font:inherit;border:2px solid #d8cdfa;border-radius:12px;padding:6px 10px;width:100%}
-#grown li{margin:2px 0}
 #grown ul{margin:4px 0;padding-left:20px}
 </style>
 </head>
 <body>
 <canvas id="stage"></canvas>
+<iframe id="frame" hidden sandbox="allow-scripts" title="Your game"></iframe>
 
-<div id="home" class="layer">
+<div id="gate" class="layer" hidden>
   <h1>Genie Game Maker</h1>
   <div class="tag">test build &middot; not public</div>
-  <div class="sp"></div>
+  <p>Grown-up: type the test passcode once. It is remembered on this device.</p>
+  <input id="gateIn" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="passcode">
+  <button id="gateGo" class="big">Open</button>
+  <p id="gateMsg"></p>
+</div>
+
+<div id="home" class="layer" hidden>
+  <h1>Genie Game Maker</h1>
+  <div class="tag">test build &middot; not public</div>
+  <div class="grow"></div>
   <button id="make" class="big">✨ Make a game</button>
   <div id="shelfT" hidden>Games you made</div>
   <div id="shelf"></div>
-  <button id="gear" aria-label="Grown-ups: press and hold">⚙</button>
+  <button id="gear" class="rnd" aria-label="Grown-ups: press and hold">⚙</button>
   <div id="gearHint">Grown-ups: press and hold</div>
 </div>
 
 <div id="talk" class="layer" hidden>
-  <button id="back" aria-label="Back">←</button>
+  <button id="back" class="rnd" aria-label="Back">←</button>
   <div class="sp"></div>
   <div id="bubble"></div>
   <div id="heard"></div>
-  <div id="tiles"></div>
-  <button id="mic" hidden aria-label="Talk to the genie">🎤</button>
+  <div id="micRow">
+    <button id="keys" class="rnd" aria-label="Type instead">⌨️</button>
+    <button id="mic" class="idle" aria-label="Talk to Pip">🎤</button>
+    <button id="now" class="rnd" aria-label="Make it now" hidden>🪄</button>
+  </div>
+  <div id="micHint"></div>
+  <div id="typeRow" hidden><input id="typeIn" type="text" autocomplete="off" placeholder="Type what the child says…"><button id="typeGo">Say</button></div>
+</div>
+
+<div id="build" class="layer" hidden>
+  <div id="buildSay"></div>
+  <div id="bar"><i></i></div>
 </div>
 
 <div id="hud" class="layer" hidden>
-  <button id="homeBtn" class="rnd" style="position:fixed;left:10px;top:calc(10px + env(safe-area-inset-top));width:52px;height:52px;font-size:24px" aria-label="Home">🏠</button>
+  <button id="homeBtn" class="rnd" aria-label="Home">🏠</button>
   <div id="hudName"></div>
-  <button id="wand" aria-label="Ask the genie to change the game"><canvas width="168" height="168"></canvas></button>
+  <button id="wand" aria-label="Talk to Pip to change the game"><canvas width="168" height="168"></canvas></button>
 </div>
-
-<div id="win" class="layer" hidden>
-  <div class="row"><button id="again" class="big">▶ Again!</button></div>
-</div>
+<div id="cap"></div>
 
 <div id="grown" class="layer" hidden>
   <div class="card">
     <h2>Grown-ups</h2>
-    <div>This is a test build. Everything stays on this device. No accounts, nothing uploaded by this page.</div>
-    <label><input type="checkbox" id="optTalk"><span>Genie talks out loud<small>Uses this device's built-in voice.</small></span></label>
-    <label><input type="checkbox" id="optListen"><span>Genie listens (microphone)<small id="listenNote">Off by default. Your browser does the listening, and most browsers send the audio to Google or Apple to turn it into words. This page never stores audio; it keeps only the words, on this device.</small></span></label>
-    <label><input type="checkbox" id="optSound"><span>Game sounds</span></label>
-    <h3>Try a wish by typing (for testing the genie's ears)</h3>
-    <input type="text" id="wishIn" placeholder="e.g. a unicorn collecting cupcakes in space with bunnies" autocomplete="off">
-    <button class="btn go" id="wishGo">Send to genie</button>
-    <pre id="wishOut" hidden></pre>
-    <h3>Current recipe</h3>
-    <pre id="recipeOut">No game yet.</pre>
-    <h3>Wishes the genie could not grant yet</h3>
-    <div id="wishList"></div>
-    <button class="btn" id="wishClear">Clear list</button>
+    <div>Test build. When the child talks, the recording goes to ElevenLabs to be turned into words, and the words go to Anthropic's Claude, which runs the conversation and writes the game. Both go through our own server, which stores nothing. Saved games stay on this device.</div>
+    <label><input type="checkbox" id="optVoice">Pip talks out loud</label>
+    <label><input type="checkbox" id="optMusic">Music</label>
+    <label><input type="checkbox" id="optSound">Game sounds</label>
+    <label><input type="checkbox" id="optAuto">Pip listens by herself after she speaks</label>
+    <label><input type="checkbox" id="optCareful">Careful builder (slower, about a minute; off = fast, about 15 seconds)</label>
+    <h3>This game</h3>
+    <pre id="gInfo">No game open.</pre>
+    <h3>The code Pip wrote</h3>
+    <pre id="gCode">—</pre>
+    <h3>Parts library (reusable pieces Pip has written on this device)</h3>
+    <div id="partList"></div>
+    <button class="btn" id="partClear">Clear library</button>
+    <h3>Last conversation</h3>
+    <pre id="gTalk">—</pre>
     <h3>Saved games</h3>
     <div id="savedList"></div>
-    <div style="margin-top:14px"><button class="btn go" id="grownClose">Done</button></div>
+    <div style="margin-top:14px"><button class="btn go" id="grownClose">Done</button> <button class="btn" id="forget">Forget passcode</button></div>
   </div>
 </div>
-<script>
-'use strict';
-/* Genie Game Maker, test build.
-   The genie interviews the child (voice + picture tiles), fills in a RECIPE, and the engine
-   assembles a game from MODULES. No network calls are made by this page. */
-const cv = document.getElementById('stage'); let g = cv.getContext('2d');
-const TAU = Math.PI * 2, PI = Math.PI;
-const $ = id => document.getElementById(id);
-const rnd = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);
-const pick = a => a[Math.floor(Math.random() * a.length)];
-const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
-let W = 0, H = 0, DPR = 1;
-function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); }
-addEventListener('resize', resize); resize();
+<script id="lib">
+let g = null; const TAU = Math.PI * 2, PI = Math.PI;
 /* ---------- drawing kit ---------- */
 const OUT = 'rgba(70,50,60,.45)';
 function shape(fill, stroke = OUT, lw = 1.6) { g.fillStyle = fill; g.fill(); if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); } }
@@ -329,342 +351,287 @@ const DECOR = {
   lollipop() { g.strokeStyle = '#fff'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -40); g.stroke(); ell(0, -52, 17, 17); shape('#ff6b9d'); g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); for (let a = 0; a < 11; a += 0.3) { const r = a * 1.35; g.lineTo(Math.cos(a) * r, -52 + Math.sin(a) * r); } g.stroke(); },
   cane() { g.lineCap = 'round'; g.strokeStyle = '#fff'; g.lineWidth = 8; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -34); g.arc(9, -34, 9, PI, 0); g.stroke(); g.strokeStyle = '#ff4f6d'; g.lineWidth = 8; g.setLineDash([6, 8]); g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -34); g.arc(9, -34, 9, PI, 0); g.stroke(); g.setLineDash([]); },
 };
-const PLACE = {
-  meadow: { bg: '#8fd46b', pt: ['#a3df7e', '#7cc65a'], decor: ['tree', 'bush', 'flower', 'flower', 'rock'] },
-  beach:  { bg: '#f6e2a8', pt: ['#fbeec2', '#ecd08a'], decor: ['palm', 'shell', 'shell', 'rock'] },
-  snow:   { bg: '#eaf4ff', pt: ['#ffffff', '#d5e6f7'], decor: ['pine', 'snowman', 'rock'] },
-  forest: { bg: '#5fae5a', pt: ['#74bf68', '#4f9a4c'], decor: ['pine', 'tree', 'mushroom', 'bush'] },
-  night:  { bg: '#27336b', pt: ['#30407f', '#1f2a5c'], decor: ['pine', 'bush', 'mushroom', 'flower'], glow: 1 },
-  space:  { bg: '#4b4478', pt: ['#575089', '#423c6c'], decor: ['crater', 'crater', 'crystal', 'rock'], glow: 1 },
-  candy:  { bg: '#ffd3ea', pt: ['#ffe6f4', '#ffbfe0'], decor: ['lollipop', 'cane', 'lollipop', 'mushroom'] },
-};
 
-/* ---------- the menu the genie can choose from ---------- */
-const LBL = {
-  girl: 'Girl', boy: 'Boy', unicorn: 'Unicorn', puppy: 'Puppy', cat: 'Cat', kitten: 'Kitten', bunny: 'Bunny', robot: 'Robot', dino: 'Dino', pig: 'Pig', bear: 'Bear', fox: 'Fox', penguin: 'Penguin',
-  chick: 'Chick', duck: 'Duck', butterfly: 'Butterfly', sheep: 'Sheep', frog: 'Frog', owl: 'Owl', hedgehog: 'Hedgehog', turtle: 'Turtle', mouse: 'Mouse', ladybug: 'Ladybug', bat: 'Bat',
-  meadow: 'Meadow', beach: 'Beach', snow: 'Snowland', forest: 'Forest', night: 'Night Garden', space: 'Space', candy: 'Candyland',
-  star: 'Star', apple: 'Apple', gem: 'Gem', fish: 'Fish', flower: 'Flower', cupcake: 'Cupcake', heart: 'Heart', coin: 'Coin',
-  ghost: 'Giggle ghost', cloud: 'Grumpy cloud', snowball: 'Snowballs', crab: 'Silly crab', none: 'None',
+</script>
+<script type="text/plain" id="rt">
+/* runtime inside the sealed game frame */
+const cv = document.getElementById('c'); const ctx = cv.getContext('2d'); g = ctx;
+var W = innerWidth, H = innerHeight, DPR = 1;
+function fit() { DPR = Math.min(2, window.devicePixelRatio || 1); W = Math.max(50, innerWidth); H = Math.max(50, innerHeight); cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); }
+addEventListener('resize', fit); fit();
+const post = m => { try { parent.postMessage(Object.assign({ gm: 1 }, m), '*'); } catch (e) {} };
+const BASE = { girl: 114, boy: 108, robot: 104, unicorn: 100, bunny: 98, dino: 84, ghost: 66, cloud: 86, snowball: 36, crab: 52, butterfly: 84, firefly: 70, ladybug: 60 };
+const PBASE = { tree: 80, pine: 92, bush: 28, flower: 24, rock: 20, palm: 92, shell: 12, snowman: 60, mushroom: 30, crystal: 40, lollipop: 70, cane: 46 };
+const FONT = 'ui-rounded, "Arial Rounded MT Bold", "Baloo 2", system-ui, sans-serif';
+const parts = []; let shakeAmt = 0, sayAt = -99, sounds = 0, wonAt = -99;
+const kit = {
+  t: 0, pointer: { x: W / 2, y: H / 2, down: false, pressed: false, released: false },
+  rand: (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a),
+  pick: a => a && a.length ? a[Math.floor(Math.random() * a.length)] : undefined,
+  clamp: (v, a, b) => v < a ? a : v > b ? b : v, dist: (x1, y1, x2, y2) => Math.hypot(x1 - x2, y1 - y2), lerp: (a, b, k) => a + (b - a) * k,
+  bg(top, bottom) { const gr = ctx.createLinearGradient(0, 0, 0, H); try { gr.addColorStop(0, top || '#8fd3ff'); gr.addColorStop(1, bottom || top || '#d6f5c9'); } catch (e) { gr.addColorStop(0, '#8fd3ff'); gr.addColorStop(1, '#d6f5c9'); } ctx.fillStyle = gr; ctx.fillRect(-20, -20, W + 40, H + 40); },
+  _draw(x, y, size, base, o, feet, fn) { if (!isFinite(x) || !isFinite(y) || !(size > 0)) return; o = o || {}; const s = size / base; ctx.save(); ctx.translate(x, y); if (o.rot) { const c = feet ? -size / 2 : 0; ctx.translate(0, c); ctx.rotate(o.rot); ctx.translate(0, -c); } if (o.alpha !== undefined) ctx.globalAlpha = kit.clamp(+o.alpha || 0, 0, 1); ctx.scale(o.flip ? -s : s, s); try { fn(); } catch (e) {} ctx.restore(); },
+  sprite(kind, x, y, size = 90, o) { const t = o && o.t !== undefined ? +o.t || 0 : 0;
+    if (TROUBLE[kind]) return kit._draw(x, y, size, BASE[kind] || 70, o, true, () => TROUBLE[kind](t));
+    if (kind === 'girl' || kind === 'boy' || kind === 'robot' || AN[kind]) return kit._draw(x, y, size, BASE[kind] || 80, o, true, () => drawChar(kind, t));
+    kit.emoji('❓', x, y - size / 2, size, o); },
+  item(kind, x, y, size = 50, o) { if (THING[kind]) kit._draw(x, y, size, 32, o, false, () => THING[kind](kit.t)); else kit.emoji('⭐', x, y, size, o); },
+  prop(kind, x, y, size = 90) { if (DECOR[kind]) kit._draw(x, y, size, PBASE[kind] || 60, null, true, () => DECOR[kind]()); },
+  emoji(ch, x, y, size = 60, o) { if (!isFinite(x) || !isFinite(y) || !(size > 0)) return; o = o || {}; ctx.save(); ctx.translate(x, y); if (o.rot) ctx.rotate(o.rot); if (o.flip) ctx.scale(-1, 1); if (o.alpha !== undefined) ctx.globalAlpha = kit.clamp(+o.alpha || 0, 0, 1); ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#000'; ctx.fillText(String(ch), 0, size * 0.06); ctx.restore(); },
+  text(str, x, y, size = 40, color = '#fff', align = 'center') { ctx.save(); ctx.font = `800 ${size}px ${FONT}`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.lineWidth = Math.max(3, size / 7); ctx.strokeStyle = 'rgba(40,30,70,.55)'; ctx.lineJoin = 'round'; ctx.strokeText(String(str), x, y); ctx.fillStyle = color; ctx.fillText(String(str), x, y); ctx.restore(); },
+  sound(name) { if (sounds++ < 4) post({ type: 'sound', name: String(name) }); },
+  note(freq, dur = 0.15) { if (sounds++ < 4) post({ type: 'note', freq: +freq || 440, dur: kit.clamp(+dur || 0.15, 0.03, 1) }); },
+  puff(x, y, colors, n = 10) { if (!Array.isArray(colors) || !colors.length) colors = ['#ffd84d', '#ff9ed2', '#7fd4ff', '#fff']; n = kit.clamp(n | 0, 1, 40); for (let i = 0; i < n && parts.length < 400; i++) { const a = Math.random() * TAU, v = 60 + Math.random() * 200; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, life: 0.5 + Math.random() * 0.6, c: colors[i % colors.length], r: 3 + Math.random() * 4 }); } },
+  shake(a = 6) { shakeAmt = Math.max(shakeAmt, kit.clamp(+a || 0, 0, 16)); },
+  say(text) { if (kit.t - sayAt > 5) { sayAt = kit.t; post({ type: 'say', text: String(text).slice(0, 90) }); } },
+  win() { if (kit.t - wonAt < 2) return; wonAt = kit.t; post({ type: 'win' }); for (let i = 0; i < 8; i++) kit.puff(W * (0.1 + Math.random() * 0.8), H * (0.15 + Math.random() * 0.5), ['#ff5a8a', '#ffd84d', '#57b8ff', '#5fd47a', '#b58cff'], 18); },
 };
-const plural = k => ({ bunny: 'bunnies', puppy: 'puppies', butterfly: 'butterflies', fish: 'fish', sheep: 'sheep', mouse: 'mice', ladybug: 'ladybugs' })[k] || LBL[k].toLowerCase() + 's';
-const OPTS = {
-  hero: ['girl', 'boy', 'unicorn', 'puppy', 'cat', 'bunny', 'robot', 'dino', 'pig', 'bear', 'fox', 'penguin'],
-  place: ['meadow', 'beach', 'snow', 'forest', 'night', 'space', 'candy'],
-  thing: ['star', 'apple', 'gem', 'fish', 'flower', 'cupcake', 'heart', 'coin'],
-  friends: ['bunny', 'chick', 'kitten', 'puppy', 'pig', 'duck', 'butterfly', 'sheep', 'none'],
-  trouble: ['ghost', 'cloud', 'snowball', 'crab', 'none'],
-};
-const ANIMALS = Object.keys(AN);
-const VALID = { hero: ['girl', 'boy', 'robot', ...ANIMALS], place: OPTS.place, thing: OPTS.thing, friends: [...ANIMALS, 'none'], trouble: OPTS.trouble };
-const ORDER = ['hero', 'place', 'thing', 'friends', 'trouble'];
-const ASK = {
-  open: 'What game shall we make? Tell me all about it!',
-  hero: 'Who is the hero of your game?',
-  place: 'Where does your game happen?',
-  thing: 'What does the hero collect?',
-  friends: 'Who are the friends that follow you?',
-  trouble: 'Is there something silly to dodge?',
-};
-const SPEED = [0.7, 1, 1.35, 1.7], COUNT = [5, 8, 12, 18], SIZE = [0.75, 1, 1.3, 1.7];
-function cleanRecipe(r) { r = r || {}; const o = {};
-  for (const k of ORDER) o[k] = VALID[k].includes(r[k]) ? r[k] : (k === 'friends' || k === 'trouble' ? 'none' : OPTS[k][0]);
-  for (const k of ['speed', 'count', 'size']) o[k] = Number.isInteger(r[k]) ? clamp(r[k], 0, 3) : 1;
-  return o; }
-const nameOf = r => `${LBL[r.hero]}'s ${LBL[r.thing]} ${LBL[r.place]}`;
-function modulesFor(r) { const m = ['place', 'walk', 'collect']; if (r.friends !== 'none') m.push('friends'); if (r.trouble !== 'none') m.push('trouble'); m.push('goal'); return m; }
+function pt(e) { kit.pointer.x = e.clientX; kit.pointer.y = e.clientY; }
+addEventListener('pointerdown', e => { pt(e); kit.pointer.down = true; kit.pointer.pressed = true; });
+addEventListener('pointermove', e => { pt(e); });
+addEventListener('pointerup', e => { pt(e); kit.pointer.down = false; kit.pointer.released = true; });
+addEventListener('pointercancel', () => { kit.pointer.down = false; kit.pointer.released = true; });
+for (const ev of ['touchstart', 'touchmove', 'gesturestart', 'dblclick', 'contextmenu']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+let paused = false, dead = false, frames = 0, lastT = 0;
+addEventListener('message', e => { if (e.source === parent && e.data && e.data.gm) { if (e.data.type === 'pause') paused = !!e.data.on; } });
+function fail(e) { if (dead) return; dead = true; post({ type: 'error', message: String(e && e.message || e).slice(0, 300), stack: String(e && e.stack || '').slice(0, 400), frames }); }
 
-/* ---------- the genie's ears: words -> recipe slots. Pure function, no network. ---------- */
-const WORDS = {
-  char: { girl: 'girl', princess: 'girl', boy: 'boy', prince: 'boy', unicorn: 'unicorn', pony: 'unicorn', horse: 'unicorn', puppy: 'puppy', dog: 'puppy', doggy: 'puppy', doggie: 'puppy', cat: 'cat', kitty: 'cat', kitten: 'kitten',
-    bunny: 'bunny', rabbit: 'bunny', robot: 'robot', dino: 'dino', dinosaur: 'dino', dragon: 'dino', pig: 'pig', piggy: 'pig', piglet: 'pig', bear: 'bear', teddy: 'bear', fox: 'fox', penguin: 'penguin',
-    chick: 'chick', chicken: 'chick', bird: 'chick', birdie: 'chick', duck: 'duck', ducky: 'duck', duckling: 'duck', butterfly: 'butterfly', sheep: 'sheep', lamb: 'sheep', frog: 'frog', froggy: 'frog', owl: 'owl', hedgehog: 'hedgehog', turtle: 'turtle', mouse: 'mouse', mice: 'mouse', ladybug: 'ladybug', bat: 'bat' },
-  place: { meadow: 'meadow', field: 'meadow', farm: 'meadow', grass: 'meadow', garden: 'meadow', park: 'meadow', beach: 'beach', sand: 'beach', ocean: 'beach', sea: 'beach', seaside: 'beach',
-    snow: 'snow', snowy: 'snow', ice: 'snow', winter: 'snow', forest: 'forest', wood: 'forest', jungle: 'forest', tree: 'forest', night: 'night', nighttime: 'night', dark: 'night',
-    space: 'space', moon: 'space', planet: 'space', rocket: 'space', candy: 'candy', candyland: 'candy', sweet: 'candy', lollipop: 'candy' },
-  thing: { star: 'star', apple: 'apple', fruit: 'apple', gem: 'gem', jewel: 'gem', diamond: 'gem', crystal: 'gem', treasure: 'gem', fish: 'fish', fishy: 'fish', flower: 'flower', daisy: 'flower',
-    cupcake: 'cupcake', cake: 'cupcake', muffin: 'cupcake', treat: 'cupcake', heart: 'heart', love: 'heart', coin: 'coin', money: 'coin', gold: 'coin' },
-  trouble: { ghost: 'ghost', monster: 'ghost', spooky: 'ghost', cloud: 'cloud', rain: 'cloud', storm: 'cloud', snowball: 'snowball', crab: 'crab' },
-  tweak: { faster: 'faster', fast: 'faster', quick: 'faster', quicker: 'faster', speedy: 'faster', zoom: 'faster', slower: 'slower', slow: 'slower', more: 'more', lot: 'more', many: 'more', fewer: 'fewer', less: 'fewer',
-    bigger: 'bigger', big: 'bigger', giant: 'bigger', huge: 'bigger', smaller: 'smaller', small: 'smaller', tiny: 'smaller', little: 'smaller' },
-};
-function singular(w) { if (WORDS.char[w] || WORDS.place[w] || WORDS.thing[w] || WORDS.trouble[w] || WORDS.tweak[w]) return [w, false];
-  if (w.endsWith('ies')) return [w.slice(0, -3) + 'y', true]; if (/(x|ch|sh)es$/.test(w)) return [w.slice(0, -2), true]; if (w.endsWith('s') && !w.endsWith('ss')) return [w.slice(0, -1), true]; return [w, false]; }
-/* ctx: 'open' | a slot name | 'change'. Returns { slots, tweaks, restart, hits } */
-function parse(text, ctx = 'open') {
-  let s = ' ' + String(text || '').toLowerCase().replace(/[^a-z' ]+/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
-  const out = { slots: {}, tweaks: [], restart: false, hits: 0 };
-  if (/ (start over|new game|another game|different game|start again) /.test(s)) { out.restart = true; out.hits++; }
-  s = s.replace(/ (no|not any|without|zero) (friends?|animals?|pets?) | (alone|by myself|by herself|by himself) /g, () => { out.slots.friends = 'none'; out.hits++; return ' '; });
-  s = s.replace(/ (no|not any|without|zero|nothing) (monsters?|ghosts?|trouble|scary|bad guys?|baddies|enemies|danger) | nothing (to dodge|scary) /g, () => { out.slots.trouble = 'none'; out.hits++; return ' '; });
-  s = s.replace(/ outer space /g, ' space ').replace(/ t rex /g, ' dino ').replace(/ ice cream /g, ' cupcake ').replace(/ the woods /g, ' forest ').replace(/ lots /g, ' lot ');
-  if (ctx === 'friends' && / (no|none|nobody|no one|nope) /.test(s) && !out.slots.friends) { out.slots.friends = 'none'; out.hits++; }
-  if (ctx === 'trouble' && / (no|none|nothing|nope) /.test(s) && !out.slots.trouble) { out.slots.trouble = 'none'; out.hits++; }
-  for (const raw of s.trim().split(' ')) { if (!raw) continue; const [w, pl] = singular(raw);
-    if (WORDS.trouble[w]) { if (!out.slots.trouble) { out.slots.trouble = WORDS.trouble[w]; out.hits++; } continue; }
-    if (WORDS.char[w]) { const k = WORDS.char[w], kidOnly = KID[k]; let slot;
-      if (ctx === 'hero') slot = out.slots.hero ? 'friends' : 'hero';
-      else if (ctx === 'friends') slot = kidOnly ? 'hero' : (out.slots.friends ? 'hero' : 'friends');
-      else if (pl && !kidOnly) slot = out.slots.friends ? 'hero' : 'friends';
-      else slot = out.slots.hero ? 'friends' : 'hero';
-      if (slot === 'friends' && kidOnly) continue;
-      if (!out.slots[slot]) { out.slots[slot] = k; out.hits++; } continue; }
-    if (WORDS.thing[w] && !(ctx === 'place' && WORDS.place[w])) { if (!out.slots.thing) { out.slots.thing = WORDS.thing[w]; out.hits++; } continue; }
-    if (WORDS.place[w]) { if (!out.slots.place) { out.slots.place = WORDS.place[w]; out.hits++; } continue; }
-    if (ctx === 'change' && WORDS.tweak[w]) { if (!out.tweaks.includes(WORDS.tweak[w])) { out.tweaks.push(WORDS.tweak[w]); out.hits++; } }
+</script>
+<script type="text/plain" id="rt2">
+(function () {
+  if (typeof game !== 'object' || !game || typeof game.update !== 'function' || typeof game.draw !== 'function') return fail(new Error('The code did not define const game = { init, update, draw }'));
+  try { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); if (game.init) game.init(); } catch (e) { return fail(e); }
+  function loop(now) { if (dead) return; requestAnimationFrame(loop); const dt = Math.min(0.05, Math.max(0.001, (now - lastT) / 1000)); lastT = now; if (paused) return;
+    kit.t += dt; sounds = 0; const t0 = performance.now();
+    try { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = 1; ctx.fillStyle = '#2a1f5c'; ctx.fillRect(0, 0, W, H);
+      if (shakeAmt > 0.3) { ctx.translate((Math.random() - 0.5) * shakeAmt * 2, (Math.random() - 0.5) * shakeAmt * 2); shakeAmt *= Math.pow(0.02, dt); } else shakeAmt = 0;
+      ctx.save(); game.update(dt); game.draw(); ctx.restore();
+    } catch (e) { return fail(e); }
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = 1;
+    for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.life -= dt; if (p.life <= 0) { parts.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 260 * dt; ctx.globalAlpha = Math.min(1, p.life * 2.2); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill(); }
+    ctx.globalAlpha = 1; kit.pointer.pressed = false; kit.pointer.released = false;
+    if (performance.now() - t0 > 400 && frames > 5) return fail(new Error('A frame took far too long (possible runaway loop)'));
+    if (++frames === 3) post({ type: 'ready' });
   }
-  return out;
-}
+  lastT = performance.now(); requestAnimationFrame(loop);
+})();
+
+</script>
+<script>
+'use strict';
+/* Genie Game Maker, test build 2.
+   Pip talks with the child (ElevenLabs voice in and out), Claude runs the conversation and writes the game,
+   and the game runs in a sealed frame with no network access. Keys live on the server, never here. */
+const API = 'https://cpobrznmlusoqrfrahsh.supabase.co/functions/v1/maker';
+const $ = id => document.getElementById(id);
+const cv = $('stage'); g = cv.getContext('2d');
+const frame = $('frame');
+const rnd = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let W = 0, H = 0, DPR = 1;
+function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); }
+addEventListener('resize', resize); resize();
+const LIB = $('lib').textContent, RT = $('rt').textContent, RT2 = $('rt2').textContent;
 
 /* ---------- settings + saved games: this device only ---------- */
-const KEY = 'genie-maker';
-const S = { talk: true, listen: false, sound: true, games: [], wishes: [] };
-try { const j = JSON.parse(localStorage.getItem(KEY) || '{}'); if (j && typeof j === 'object') { for (const k of ['talk', 'listen', 'sound']) if (typeof j[k] === 'boolean') S[k] = j[k];
-  if (Array.isArray(j.games)) S.games = j.games.slice(0, 12).map(x => ({ id: String(x.id), r: cleanRecipe(x.r) }));
-  if (Array.isArray(j.wishes)) S.wishes = j.wishes.slice(0, 60).map(x => ({ t: String(x.t).slice(0, 160), c: String(x.c).slice(0, 12), d: String(x.d).slice(0, 10) })); } } catch (e) {}
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+const KEY = 'genie-maker2', PKEY = 'genie-maker-pass';
+const S = { voice: true, music: true, sound: true, auto: true, careful: false, games: [], parts: [] };
+try { const j = JSON.parse(localStorage.getItem(KEY) || '{}'); for (const k of ['voice', 'music', 'sound', 'auto', 'careful']) if (typeof j[k] === 'boolean') S[k] = j[k]; if (Array.isArray(j.games)) S.games = j.games.filter(x => x && x.id && typeof x.code === 'string').slice(0, 8); if (Array.isArray(j.parts)) S.parts = j.parts.filter(p => p && p.name && p.code).slice(0, 30); } catch (e) {}
+function save() { for (let n = 0; n < 6; n++) { try { localStorage.setItem(KEY, JSON.stringify(S)); return; } catch (e) { if (S.games.length > 1) S.games.pop(); else return; } } }
+let PASSC = ''; try { PASSC = localStorage.getItem(PKEY) || ''; } catch (e) {}
+{ const q = new URLSearchParams(location.search).get('p'); if (q) { PASSC = q.slice(0, 40); try { localStorage.setItem(PKEY, PASSC); } catch (e) {} history.replaceState(null, '', location.pathname); } }
+function idb() { return new Promise((res, rej) => { const r = indexedDB.open('genie-maker', 1); r.onupgradeneeded = () => r.result.createObjectStore('music'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbPut(k, v) { try { const d = await idb(); await new Promise((res, rej) => { const t = d.transaction('music', 'readwrite'); t.objectStore('music').put(v, k); t.oncomplete = res; t.onerror = rej; }); } catch (e) {} }
+async function idbGet(k) { try { const d = await idb(); return await new Promise((res, rej) => { const q = d.transaction('music').objectStore('music').get(k); q.onsuccess = () => res(q.result || null); q.onerror = rej; }); } catch (e) { return null; } }
+async function idbDel(k) { try { const d = await idb(); d.transaction('music', 'readwrite').objectStore('music').delete(k); } catch (e) {} }
 
-/* ---------- sound ---------- */
-let AC = null;
-function audio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === 'suspended') AC.resume(); }
-function tone(f, d = 0.12, type = 'sine', v = 0.12, slide = 0, at = 0) { if (!S.sound || !AC) return; const t = AC.currentTime + at, o = AC.createOscillator(), a = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, f + slide), t + d);
+async function api(op, body, blob) { const r = await fetch(`${API}?op=${op}`, { method: 'POST', headers: { 'x-maker-pass': PASSC, 'content-type': blob ? (blob.type || 'audio/webm') : 'application/json' }, body: blob || JSON.stringify(body || {}) });
+  if (r.status === 401) { PASSC = ''; try { localStorage.removeItem(PKEY); } catch (e) {} hush(); show('gate'); throw new Error('passcode'); } return r; }
+
+/* ---------- sound: one AudioContext for effects, Pip's voice and music ---------- */
+let AC = null, vGain = null, mGain = null, vSrc = null, mSrc = null, ducked = false;
+function audio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); vGain = AC.createGain(); vGain.connect(AC.destination); mGain = AC.createGain(); mGain.gain.value = 0.2; mGain.connect(AC.destination); } catch (e) {} } if (AC && AC.state === 'suspended') AC.resume(); }
+function tone(f, d = 0.12, type = 'sine', v = 0.12, slide = 0, at = 0) { if (!S.sound || !AC) return; const t = AC.currentTime + at, o = AC.createOscillator(), a = AC.createGain(); o.type = type; o.frequency.setValueAtTime(Math.max(40, f), t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, f + slide), t + d);
   a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(v, t + 0.012); a.gain.exponentialRampToValueAtTime(0.001, t + d); o.connect(a).connect(AC.destination); o.start(t); o.stop(t + d + 0.02); }
-const sfx = { pop: n => tone(520 + (n % 8) * 60, 0.14, 'triangle', 0.14, 240), join() { tone(660, 0.1, 'sine', 0.12); tone(880, 0.16, 'sine', 0.12, 0, 0.09); }, bonk() { tone(300, 0.3, 'sine', 0.16, -180); tone(200, 0.2, 'triangle', 0.1, 120, 0.12); },
-  win() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.22, 'triangle', 0.13, 0, i * 0.11)); }, tap() { tone(700, 0.06, 'sine', 0.08); }, magic() { for (let i = 0; i < 7; i++) tone(700 + i * 170, 0.12, 'sine', 0.07, 0, i * 0.05); } };
+let popN = 0;
+const sfx = { pop() { tone(520 + (popN++ % 8) * 60, 0.14, 'triangle', 0.14, 240); }, join() { tone(660, 0.1, 'sine', 0.12); tone(880, 0.16, 'sine', 0.12, 0, 0.09); }, bonk() { tone(300, 0.3, 'sine', 0.16, -180); tone(200, 0.2, 'triangle', 0.1, 120, 0.12); },
+  win() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.22, 'triangle', 0.13, 0, i * 0.11)); }, tap() { tone(700, 0.06, 'sine', 0.08); }, magic() { for (let i = 0; i < 7; i++) tone(700 + i * 170, 0.12, 'sine', 0.07, 0, i * 0.05); },
+  boing() { tone(220, 0.28, 'sine', 0.16, 420); }, whoosh() { tone(900, 0.25, 'sawtooth', 0.05, -700); }, splash() { tone(500, 0.2, 'triangle', 0.1, -350); tone(900, 0.12, 'sine', 0.06, -500, 0.05); }, munch() { tone(260, 0.07, 'square', 0.07); tone(210, 0.07, 'square', 0.07, 0, 0.1); tone(250, 0.07, 'square', 0.07, 0, 0.2); } };
+function duck(on) { ducked = on; if (mGain && AC) mGain.gain.setTargetAtTime(on ? 0.05 : 0.2, AC.currentTime, 0.15); }
+function stopMusic() { if (mSrc) { try { mSrc.stop(); } catch (e) {} mSrc = null; } }
+async function playMusic(ab) { stopMusic(); if (!S.music || !AC || !ab) return; try { const buf = await AC.decodeAudioData(ab.slice(0)); stopMusic(); const s = AC.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(mGain); mGain.gain.setValueAtTime(0.0001, AC.currentTime); mGain.gain.setTargetAtTime(ducked ? 0.05 : 0.2, AC.currentTime, 0.8); s.start(); mSrc = s; } catch (e) {} }
 
-/* ---------- the genie's voice (talks) and ears (listens, only if a grown-up turned it on) ---------- */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-let speaking = 0, rec = null, sayTimer = 0, voice = null;
-function pickVoice() { try { const vs = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)); voice = vs.find(v => /samantha|karen|moira|tessa|female|zira|aria|jenny/i.test(v.name) && v.localService) || vs.find(v => v.localService) || vs[0] || null; } catch (e) {} }
-if ('speechSynthesis' in window) { pickVoice(); try { speechSynthesis.onvoiceschanged = pickVoice; } catch (e) {} }
-function say(text, then) { $('bubble').textContent = text; stopListen(); clearTimeout(sayTimer); speaking = 1;
-  const done = () => { if (!speaking) return; speaking = 0; clearTimeout(sayTimer); if (then) then(); };
-  if (S.talk && 'speechSynthesis' in window) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); if (voice) u.voice = voice; u.lang = 'en-US'; u.rate = 0.95; u.pitch = 1.35; u.onend = done; u.onerror = done; speechSynthesis.speak(u); } catch (e) {}
-    sayTimer = setTimeout(done, 1500 + text.length * 85); }
-  else sayTimer = setTimeout(done, 500); }
-function hush() { speaking = 0; clearTimeout(sayTimer); try { speechSynthesis.cancel(); } catch (e) {} stopListen(); }
-function canListen() { return !!(SR && S.listen); }
-function micUI() { const m = $('mic'); m.hidden = !(canListen() && (M.mode === 'ask' || M.mode === 'change')); m.classList.toggle('on', !!rec); }
-function startListen() { if (!canListen() || rec || !(M.mode === 'ask' || M.mode === 'change')) return;
-  try { const r = new SR(); r.lang = 'en-US'; r.interimResults = false; r.maxAlternatives = 3;
-    r.onresult = e => { const alts = []; for (const a of e.results[0]) alts.push(a.transcript); hear(alts); };
-    r.onend = () => { if (rec === r) rec = null; micUI(); }; r.onerror = () => { if (rec === r) rec = null; micUI(); };
-    rec = r; r.start(); } catch (e) { rec = null; }
-  micUI(); }
-function stopListen() { if (rec) { const r = rec; rec = null; try { r.abort(); } catch (e) {} } if (typeof M !== 'undefined') micUI(); }
+/* ---------- Pip's voice ---------- */
+let sayId = 0, speaking = 0; const ttsCache = new Map();
+function stopVoice() { if (vSrc) { vSrc.onended = null; try { vSrc.stop(); } catch (e) {} vSrc = null; } }
+function hush() { sayId++; stopVoice(); speaking = 0; stopListen(true); duck(false); }
+async function say(text, then) { const id = ++sayId; stopListen(true); stopVoice(); $('bubble').textContent = text; speaking = 1; setMic('talk'); duck(true); let ok = false;
+  if (S.voice && AC) { try { let buf = ttsCache.get(text); if (!buf) { const r = await api('tts', { text }); if (!r.ok) throw new Error('tts'); buf = await AC.decodeAudioData(await r.arrayBuffer()); if (ttsCache.size < 60) ttsCache.set(text, buf); }
+      if (id !== sayId) return; await new Promise(res => { const s = AC.createBufferSource(); s.buffer = buf; s.connect(vGain); s.onended = res; vSrc = s; s.start(); }); ok = true; } catch (e) {} }
+  if (id !== sayId) return; if (!ok) await sleep(S.voice ? 500 : 700 + text.length * 40);
+  if (id !== sayId) return; speaking = 0; vSrc = null; duck(false); setMic('idle'); if (then) then(); }
 
-/* ---------- MODULES: each is a small reusable part. A recipe picks which ones run. ---------- */
-const WW = 1500, WH = 1100;
-let game = null;
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-function farSpot(G, min = 220) { for (let i = 0; i < 40; i++) { const p = { x: rnd(70, WW - 70), y: rnd(110, WH - 60) }; if (dist(p, G.hero) > min) return p; } return { x: 100, y: 140 }; }
-function puff(G, x, y, cols, n = 10, sp = 160) { for (let i = 0; i < n; i++) { const a = rnd(TAU), v = rnd(sp * 0.3, sp); G.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, life: rnd(0.5, 1), max: 1, col: pick(cols), r: rnd(2.5, 5.5) }); } }
-const MODULES = {
-  place: {
-    init(G) { const p = PLACE[G.r.place]; G.patches = []; for (let i = 0; i < 120; i++) G.patches.push({ x: rnd(WW), y: rnd(WH), rx: rnd(26, 70), ry: rnd(10, 24), c: p.pt[i % 2] });
-      G.decor = []; for (let i = 0; i < 34; i++) { const d = { x: rnd(40, WW - 40), y: rnd(90, WH - 20), k: pick(p.decor), s: rnd(0.9, 1.35) }; if (Math.hypot(d.x - WW / 2, d.y - WH / 2) > 150) G.decor.push(d); }
-      G.twinkle = []; if (p.glow) for (let i = 0; i < 70; i++) G.twinkle.push({ x: rnd(WW), y: rnd(WH), p: rnd(TAU) }); },
-    draw(G, list) { const p = PLACE[G.r.place]; g.fillStyle = p.bg; g.fillRect(0, 0, WW, WH);
-      for (const a of G.patches) { g.fillStyle = a.c; ell(a.x, a.y, a.rx, a.ry); g.fill(); }
-      for (const s of G.twinkle) { g.fillStyle = `rgba(255,255,220,${0.25 + 0.35 * Math.sin(G.t * 2 + s.p)})`; ell(s.x, s.y, 2.2, 2.2); g.fill(); }
-      g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 10; g.setLineDash([2, 26]); g.lineCap = 'round'; g.strokeRect(14, 14, WW - 28, WH - 28); g.setLineDash([]);
-      for (const d of G.decor) list.push({ y: d.k === 'crater' ? -1e9 : d.y, f() { g.save(); g.translate(d.x, d.y); g.scale(d.s, d.s); DECOR[d.k](); g.restore(); } }); },
-  },
-  walk: {
-    init(G) { G.hero = { x: WW / 2, y: WH / 2, face: 1, walk: 0, spin: 0, moving: false }; G.trail = []; G.target = null; },
-    update(G, dt) { const h = G.hero, sp = 185 * SPEED[G.r.speed]; let dx = 0, dy = 0;
-      if (G.state === 'play') { dx = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0); dy = (keys.ArrowDown || keys.s ? 1 : 0) - (keys.ArrowUp || keys.w ? 1 : 0);
-        if (dx || dy) G.target = null; else if (G.target) { const tx = G.target.x - h.x, ty = G.target.y - h.y, d = Math.hypot(tx, ty); if (d < 8) G.target = null; else { dx = tx / d; dy = ty / d; } } }
-      const m = Math.hypot(dx, dy); h.moving = m > 0;
-      if (m) { h.x = clamp(h.x + dx / m * sp * dt, 36, WW - 36); h.y = clamp(h.y + dy / m * sp * dt, 80, WH - 24); if (Math.abs(dx) > 0.15) h.face = dx > 0 ? 1 : -1; }
-      if (h.moving || G.state === 'win') h.walk += dt; if (h.spin > 0) h.spin -= dt;
-      const l = G.trail[G.trail.length - 1]; if (!l || Math.hypot(l.x - h.x, l.y - h.y) > 8) { G.trail.push({ x: h.x, y: h.y }); if (G.trail.length > 400) G.trail.shift(); } },
-    draw(G, list) { const h = G.hero, s = charScale(G.r.hero) * SIZE[G.r.size];
-      if (G.target) { g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 3; ell(G.target.x, G.target.y, 14 + Math.sin(G.t * 8) * 3, 7 + Math.sin(G.t * 8) * 1.5); g.stroke(); }
-      list.push({ y: h.y, f() { sprite(h.x, h.y, s, h.face, () => { if (h.spin > 0) { g.translate(0, -40); g.rotate(h.spin * 14); g.translate(0, 40); } if (G.state === 'win') g.translate(0, -Math.abs(Math.sin(G.t * 7)) * 18);
-        if (G.safe > 0 && G.safe < 2.4 && Math.sin(G.t * 30) > 0.3) g.globalAlpha = 0.55; drawChar(G.r.hero, h.moving || G.state === 'win' ? h.walk : 0); }); } }); },
-  },
-  collect: {
-    init(G) { G.need = Math.min(24, COUNT[G.r.count] + (G.round - 1) * 2); G.got = 0; G.things = []; for (let i = 0; i < G.need; i++) { const p = farSpot(G, 170); G.things.push({ x: p.x, y: p.y, vx: 0, vy: 0, lock: 0, ph: rnd(TAU) }); } },
-    update(G, dt) { const reach = 30 + 20 * SIZE[G.r.size];
-      for (let i = G.things.length - 1; i >= 0; i--) { const o = G.things[i]; if (o.lock > 0) o.lock -= dt; o.x = clamp(o.x + o.vx * dt, 50, WW - 50); o.y = clamp(o.y + o.vy * dt, 100, WH - 40); o.vx *= 0.9; o.vy *= 0.9;
-        if (o.lock <= 0 && G.state === 'play' && Math.hypot(o.x - G.hero.x, o.y - 24 - G.hero.y + 24) < reach) { G.things.splice(i, 1); G.got++; sfx.pop(G.got); puff(G, o.x, o.y - 20, ['#ffd84d', '#fff', '#ff9ed2'], 9); } } },
-    draw(G, list) { for (const o of G.things) list.push({ y: o.y, f() { g.fillStyle = 'rgba(0,0,0,.14)'; ell(o.x, o.y, 12, 4.5); g.fill(); g.save(); g.translate(o.x, o.y - 24 + Math.sin(G.t * 3 + o.ph) * 4); g.scale(1.25, 1.25); THING[G.r.thing](G.t); g.restore(); } }); },
-  },
-  friends: {
-    init(G) { G.wild = []; const n = G.crew.length >= 12 ? 0 : G.crew.length ? 2 : 4; for (let i = 0; i < n; i++) { const p = farSpot(G, 240); G.wild.push({ x: p.x, y: p.y, a: rnd(TAU), tt: 0, ph: rnd(9) }); }
-      G.crew.forEach((c, i) => { c.x = G.hero.x - 30 - i * 16; c.y = G.hero.y + 6; }); },
-    update(G, dt) {
-      for (let i = G.wild.length - 1; i >= 0; i--) { const f = G.wild[i]; f.tt -= dt; if (f.tt <= 0) { f.tt = rnd(1.2, 3); f.a = rnd(TAU); f.go = Math.random() < 0.7; }
-        if (f.go) { f.x = clamp(f.x + Math.cos(f.a) * 34 * dt, 60, WW - 60); f.y = clamp(f.y + Math.sin(f.a) * 34 * dt, 110, WH - 40); }
-        if (G.state === 'play' && dist(f, G.hero) < 54) { G.wild.splice(i, 1); G.crew.push({ x: f.x, y: f.y, ph: f.ph, face: 1 }); sfx.join(); puff(G, f.x, f.y - 40, ['#ff5a8a', '#ff9ed2', '#fff'], 8, 110); } }
-      G.crew.forEach((c, i) => { const idx = G.trail.length - 1 - (i + 1) * 6, t = G.trail[Math.max(0, idx)] || G.hero; const k = Math.min(1, dt * 7); if (Math.abs(t.x - c.x) > 1) c.face = t.x > c.x ? 1 : -1; c.x += (t.x - c.x) * k; c.y += (t.y - c.y) * k; }); },
-    draw(G, list) { const k = G.r.friends;
-      for (const f of G.wild) list.push({ y: f.y, f() { sprite(f.x, f.y, 0.62, Math.cos(f.a) > 0 ? 1 : -1, () => drawAnimal(k, G.t + f.ph)); g.save(); g.translate(f.x + 16, f.y - 62 + Math.sin(G.t * 4 + f.ph) * 3); g.scale(0.5, 0.5); THING.heart(); g.restore(); } });
-      for (const c of G.crew) list.push({ y: c.y - 0.5, f() { sprite(c.x, c.y, 0.62, c.face, () => { if (G.state === 'win') g.translate(0, -Math.abs(Math.sin(G.t * 7 + c.ph)) * 12); drawAnimal(k, G.t + c.ph); }); } }); },
-  },
-  trouble: {
-    init(G) { G.troubles = []; const n = 2 + (G.round > 2 ? 1 : 0); for (let i = 0; i < n; i++) { const p = farSpot(G, 380); G.troubles.push({ x: p.x, y: p.y, hx: p.x, vx: (i % 2 ? 1 : -1) * 1, away: 0, ph: rnd(9) }); } },
-    update(G, dt) { const k = G.r.trouble, h = G.hero;
-      for (const o of G.troubles) { if (o.away > 0) o.away -= dt;
-        if (k === 'ghost') { const d = Math.max(1, dist(o, h)), dir = o.away > 0 ? -2.6 : 1; o.x += (h.x - o.x) / d * 48 * dir * dt + Math.cos(G.t * 1.7 + o.ph) * 26 * dt; o.y += (h.y - o.y) / d * 48 * dir * dt + Math.sin(G.t * 2.1 + o.ph) * 26 * dt; o.x = clamp(o.x, 40, WW - 40); o.y = clamp(o.y, 90, WH - 30); }
-        else if (k === 'cloud') { o.x += o.vx * 46 * dt; o.y += Math.sin(G.t * 0.6 + o.ph) * 14 * dt; if (o.x > WW + 60) { o.x = -60; o.y = rnd(140, WH - 60); } if (o.x < -60) { o.x = WW + 60; o.y = rnd(140, WH - 60); } }
-        else if (k === 'snowball') { o.x += o.vx * 125 * dt; if (o.x > WW + 60) { o.x = -60; o.y = rnd(140, WH - 60); } if (o.x < -60) { o.x = WW + 60; o.y = rnd(140, WH - 60); } }
-        else { o.x += o.vx * 85 * dt; if (o.x > o.hx + 230 || o.x > WW - 50) o.vx = -1; if (o.x < o.hx - 230 || o.x < 50) o.vx = 1; }
-        if (G.state === 'play' && G.safe <= 0 && Math.hypot(o.x - h.x, o.y - h.y) < 44) { G.safe = 2.6; h.spin = 0.7; G.target = null; o.away = 3; sfx.bonk(); G.bonks++;
-          const n = Math.min(2, G.got); G.got -= n; for (let i = 0; i < n; i++) G.things.push({ x: h.x, y: h.y, vx: rnd(-520, 520), vy: rnd(-520, 520), lock: 0.9, ph: rnd(TAU) }); puff(G, h.x, h.y - 40, ['#fff', '#bfe3ff'], 10); } } },
-    draw(G, list) { const k = G.r.trouble; for (const o of G.troubles) list.push({ y: o.y + (k === 'cloud' ? 400 : 0), f() { sprite(o.x, o.y, 1, o.vx, () => TROUBLE[k](G.t + o.ph), k !== 'cloud' || 1); } }); },
-  },
-  goal: {
-    init(G) { G.state = 'play'; G.safe = 1.5; },
-    update(G, dt) { if (G.safe > 0) G.safe -= dt;
-      if (G.state === 'play' && G.got >= G.need) { G.state = 'win'; G.winT = 0; G.target = null; sfx.win(); $('win').hidden = false; say(`Hooray! You found all the ${plural(G.r.thing)}!`); }
-      if (G.state === 'win') { G.winT += dt; if (Math.random() < dt * 5) puff(G, G.hero.x + rnd(-260, 260), G.hero.y + rnd(-220, 60), ['#ff5a8a', '#ffd84d', '#57b8ff', '#5fd47a', '#b58cff'], 16, 220); if (G.winT > 10) nextRound(); } },
-  },
-};
-function sprite(x, y, s, face, fn) { g.fillStyle = 'rgba(0,0,0,.16)'; ell(x, y, 22 * s, 7 * s); g.fill(); g.save(); g.translate(x, y); g.scale(face < 0 ? -s : s, s); fn(); g.restore(); }
-function newGame(r, prev) { const G = { r, mods: modulesFor(r), t: 0, round: prev ? prev.round + 1 : 1, crew: prev && prev.r.friends === r.friends ? prev.crew : [], wild: [], things: [], troubles: [], parts: [], bonks: 0, got: 0, need: 0 };
-  for (const m of ['place', 'walk', 'collect', 'friends', 'trouble', 'goal']) if (G.mods.includes(m)) MODULES[m].init(G); game = G; return G; }
-function nextRound() { $('win').hidden = true; newGame(game.r, game); }
-function updateGame(dt) { const G = game; G.t += dt; for (const m of G.mods) if (MODULES[m].update) MODULES[m].update(G, dt);
-  for (let i = G.parts.length - 1; i >= 0; i--) { const p = G.parts[i]; p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 220 * dt; if (p.life <= 0) G.parts.splice(i, 1); } }
-let VS = 1, camX = 0, camY = 0;
-function view() { VS = clamp(Math.min(W, H) / 470, 0.8, 1.5); const vw = W / VS, vh = H / VS, h = game.hero; camX = vw >= WW ? (WW - vw) / 2 : clamp(h.x - vw / 2, 0, WW - vw); camY = vh >= WH ? (WH - vh) / 2 : clamp(h.y - 40 - vh / 2, 0, WH - vh); }
-function drawGame() { const G = game; view(); g.setTransform(DPR, 0, 0, DPR, 0, 0); g.fillStyle = PLACE[G.r.place].bg; g.fillRect(0, 0, W, H);
-  g.setTransform(DPR * VS, 0, 0, DPR * VS, -camX * VS * DPR, -camY * VS * DPR);
-  const list = []; for (const m of G.mods) if (MODULES[m].draw) MODULES[m].draw(G, list); list.sort((a, b) => a.y - b.y); for (const d of list) d.f();
-  for (const p of G.parts) { g.globalAlpha = clamp(p.life * 2, 0, 1); g.fillStyle = p.col; ell(p.x, p.y, p.r, p.r); g.fill(); } g.globalAlpha = 1;
-  g.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const txt = `${G.got} / ${G.need}`; g.font = '800 26px "Baloo 2", sans-serif'; const tw = g.measureText(txt).width, pw = tw + 62, px = W / 2 - pw / 2, py = 44 + safeTop;
-  rr(px, py, pw, 42, 21); g.fillStyle = 'rgba(255,255,255,.9)'; g.fill(); g.save(); g.translate(px + 24, py + 21); g.scale(0.95, 0.95); THING[G.r.thing](G.t); g.restore();
-  g.fillStyle = '#3a2a55'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(txt, px + 46, py + 23);
-  if (G.crew.length) { g.font = '800 18px "Baloo 2", sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.95)'; g.strokeStyle = 'rgba(58,42,85,.55)'; g.lineWidth = 4; const s = `♥ ${G.crew.length}`; g.strokeText(s, W / 2, py + 58); g.fillText(s, W / 2, py + 58); } }
-let safeTop = 0;
+/* ---------- Pip's ears: record, stop on silence, send to the server for transcription ---------- */
+let micStream = null, micNode = null, analyser = null, rec = null, micState = 'idle', micLevel = 0, noMic = false;
+const HINT = { idle: 'Tap and talk to Pip', on: 'Pip is listening…', think: 'Pip is thinking…', talk: '', off: 'No microphone here. Tap the keyboard to type.' };
+function setMic(st) { micState = st; const m = $('mic'); m.className = st; $('micHint').textContent = HINT[st] || ''; if (st !== 'on') m.style.setProperty('--lv', 1); }
+function stopListen(discard) { if (rec) { const r = rec; rec = null; r._discard = !!discard; try { r.stop(); } catch (e) {} } }
+async function listen() { if (rec || speaking || busy || !(M.mode === 'talk')) return; audio(); if (!AC) return;
+  if (noMic || !navigator.mediaDevices || !window.MediaRecorder) { noMic = true; setMic('off'); $('typeRow').hidden = false; return; }
+  try { if (!micStream) { micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); micNode = AC.createMediaStreamSource(micStream); analyser = AC.createAnalyser(); analyser.fftSize = 1024; micNode.connect(analyser); } }
+  catch (e) { noMic = true; setMic('off'); $('typeRow').hidden = false; return; }
+  if (rec || speaking || busy || M.mode !== 'talk') return;
+  const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+  let r; try { r = new MediaRecorder(micStream, mime ? { mimeType: mime } : {}); } catch (e) { noMic = true; setMic('off'); return; }
+  const chunks = []; let heardSound = false, loudFor = 0; const t0 = performance.now(); let lastLoud = t0, floor = 0.012; const data = new Float32Array(analyser.fftSize);
+  r.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  r.onstop = async () => { clearInterval(iv); if (rec === r) rec = null; if (r._discard || !heardSound) { if (micState === 'on') setMic('idle'); return; }
+    setMic('think'); try { const blob = new Blob(chunks, { type: (r.mimeType || mime || 'audio/webm').split(';')[0] }); const res = await api('stt', null, blob); const j = await res.json(); const text = (j.text || '').trim(); if (text && M.mode === 'talk') onHeard(text); else setMic('idle'); } catch (e) { setMic('idle'); } };
+  const iv = setInterval(() => { if (rec !== r) return; analyser.getFloatTimeDomainData(data); let s = 0; for (let i = 0; i < data.length; i++) s += data[i] * data[i]; const rms = Math.sqrt(s / data.length), now = performance.now();
+    micLevel = rms; $('mic').style.setProperty('--lv', 1 + Math.min(0.5, rms * 6)); if (now - t0 < 350) floor = Math.max(floor, Math.min(0.05, rms * 1.2));
+    const loud = rms > Math.max(0.02, floor * 2.2); if (loud) { loudFor += 60; lastLoud = now; if (loudFor > 180) heardSound = true; }
+    if (heardSound && now - lastLoud > 1500) stopListen(false); else if (!heardSound && now - t0 > 9000) stopListen(true); else if (now - t0 > 16000) stopListen(false); }, 60);
+  rec = r; try { r.start(); } catch (e) { rec = null; clearInterval(iv); return; } setMic('on'); }
+const autoListen = () => { if (S.auto) listen(); };
 
-/* ---------- the genie scene (home, interview, change) ---------- */
+/* ---------- the conversation ---------- */
+var M = { mode: 'gate', change: false };
+let convo = [], cur = null, busy = false, turns = 0;
+function show(mode) { M.mode = mode; for (const id of ['gate', 'home', 'talk', 'build']) $(id).hidden = id !== mode; $('hud').hidden = mode !== 'play'; frame.classList.toggle('off', mode !== 'play'); if (mode !== 'play') $('cap').style.opacity = 0;
+  $('now').hidden = !(mode === 'talk' && (M.change || turns > 0)); $('now').textContent = M.change ? '▶️' : '🪄'; }
+let capT = 0; function caption(t) { const c = $('cap'); c.textContent = t; c.style.opacity = 1; clearTimeout(capT); capT = setTimeout(() => c.style.opacity = 0, 2500 + t.length * 60); }
+function startMake() { audio(); sfx.magic(); closeGame(); convo = []; turns = 0; M.change = false; $('heard').textContent = ''; show('talk'); const hi = 'Hi! I am Pip, the wish unicorn. What game shall we make today?'; convo.push({ role: 'assistant', content: hi }); say(hi, autoListen); }
+async function onHeard(text, quiet) { if (busy) return; busy = true; hush(); if (!quiet) $('heard').textContent = `You said: “${text}”`; convo.push({ role: 'user', content: text }); turns++; setMic('think');
+  try { const r = await api('talk', { messages: convo, game: cur ? { name: cur.name, brief: cur.brief } : null }); const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || 'talk');
+    convo.push({ role: 'assistant', content: j.say }); busy = false; show(M.mode);
+    if (j.action === 'build' && j.brief) return doBuild({ say: j.say, brief: j.brief, name: j.game_name, music: j.music, fresh: !M.change });
+    if (j.action === 'play' && cur) return resume(j.say);
+    say(j.say, autoListen);
+  } catch (e) { busy = false; if (e.message !== 'passcode') say('Oops, my magic hiccuped. Can you say that again?', autoListen); } }
+function openChange() { if (!cur) return; audio(); sfx.magic(); post({ type: 'pause', on: true }); M.change = true; $('heard').textContent = ''; show('talk'); const q = 'What shall we change?'; convo.push({ role: 'assistant', content: q }); say(q, autoListen); }
+function resume(text) { hush(); M.change = false; show('play'); post({ type: 'pause', on: false }); if (text) { caption(text); say(text); } }
+
+/* ---------- building: Claude writes the game, we seal it in a frame ---------- */
+const FILL = ['Stirring in the sparkles!', 'Adding a pinch of giggles!', 'Mixing, mixing, mixing!', 'Sprinkling the stardust!', 'Almost ready!', 'Just a little more magic!'];
+function setProg(p) { $('bar').firstElementChild.style.width = Math.round(clamp(p, 0, 1) * 100) + '%'; }
+async function streamBuild(body) { const r = await api('build', body); if (!r.ok || !r.body) { let m = 'build failed'; try { m = (await r.json()).error || m; } catch (e) {} throw new Error(m); }
+  const rd = r.body.getReader(), dec = new TextDecoder(); let txt = ''; for (;;) { const { done, value } = await rd.read(); if (done) break; txt += dec.decode(value, { stream: true }); setProg(0.05 + 0.9 * Math.min(1, txt.length / 7000)); }
+  const tag = n => { const m = txt.match(new RegExp(`<${n}>([\\s\\S]*?)</${n}>`)); return m ? m[1].trim() : ''; };
+  const err = tag('error'); if (err) throw new Error(err);
+  let code = tag('code'); if (!code) { const i = txt.indexOf('<code>'); if (i >= 0) code = txt.slice(i + 6).trim(); } if (!code) throw new Error('no code came back');
+  const parts = []; const re = /<part\s+name="([A-Za-z_$][\w$]*)"\s+about="([^"]*)"\s*>([\s\S]*?)<\/part>/g; let m; while ((m = re.exec(txt))) { const c = m[3].trim(); if (new RegExp(`^(async\\s+)?function\\s+${m[1].replace(/\$/g, '\\$')}\\s*\\(`).test(c) && c.length < 4000) parts.push({ name: m[1], about: m[2].slice(0, 200), code: c }); }
+  return { how: tag('how').slice(0, 160), icon: tag('icon').slice(0, 8) || '🎮', use: tag('use').split(',').map(s => s.trim()).filter(Boolean), parts, code }; }
+function assemble(res, req, id) { const mine = new Map(res.parts.map(p => [p.name, p])), pre = [];
+  for (const n of res.use) { const p = S.parts.find(x => x.name === n); if (p && !mine.has(n)) pre.push(p.code); }
+  for (const p of res.parts) { pre.push(p.code); if (!S.parts.some(x => x.name === p.name)) { S.parts.unshift({ name: p.name, about: p.about, code: p.code }); S.parts.length = Math.min(30, S.parts.length); } }
+  return { id, name: (req.name || 'My Game').slice(0, 60), icon: res.icon, brief: req.brief, how: res.how || 'Touch the screen to play!', music: req.music || '', pre: pre.join('\n\n'), code: res.code, uses: [...res.use, ...res.parts.map(p => p.name)] }; }
+const SO = '<' + 'script>', SC = '<' + '/script>';
+const esc = s => String(s).replace(new RegExp('<' + '/script', 'gi'), '<\\/script').replace(new RegExp('<' + '!--', 'g'), '<\\!--');
+function frameDoc(gm) { return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'"><style>html,body{margin:0;height:100%;overflow:hidden;background:#2a1f5c;touch-action:none;user-select:none;-webkit-user-select:none}canvas{display:block;width:100%;height:100%;touch-action:none}</style></head><body><canvas id="c"></canvas>
+${SO}window.onerror=function(m,s,l){try{parent.postMessage({gm:1,type:'error',message:String(m)+' (line '+l+')',frames:-1},'*')}catch(e){}return true};${SC}
+${SO}${LIB}${SC}${SO}${RT}${SC}
+${SO}${esc(gm.pre)}\n;\n${esc(gm.code)}\n${SC}
+${SO}${RT2}${SC}</body></html>`; }
+const post = m => { try { frame.contentWindow.postMessage(Object.assign({ gm: 1 }, m), '*'); } catch (e) {} };
+let waiter = null, live = false;
+function launch(gm) { live = false; return new Promise((res, rej) => { const to = setTimeout(() => { waiter = null; rej(new Error('The game did not start within a few seconds')); }, 7000); waiter = { ok() { clearTimeout(to); waiter = null; live = true; res(); }, bad(m) { clearTimeout(to); waiter = null; rej(new Error(m)); } }; frame.hidden = false; frame.srcdoc = frameDoc(gm); }); }
+addEventListener('message', e => { if (e.source !== frame.contentWindow || !e.data || !e.data.gm) return; const d = e.data;
+  if (d.type === 'ready') { if (waiter) waiter.ok(); }
+  else if (d.type === 'error') { if (waiter) waiter.bad(d.message); else if (live) crash(d.message); }
+  else if (M.mode !== 'play') return;
+  else if (d.type === 'sound') { if (sfx[d.name]) sfx[d.name](); else sfx.pop(); }
+  else if (d.type === 'note') tone(clamp(+d.freq || 440, 60, 4000), clamp(+d.dur || 0.15, 0.03, 1), 'triangle', 0.12);
+  else if (d.type === 'win') sfx.win();
+  else if (d.type === 'say') { if (!speaking) { caption(String(d.text)); say(String(d.text).slice(0, 90)); } } });
+function closeGame() { live = false; waiter = null; frame.srcdoc = ''; frame.hidden = true; cur = null; stopMusic(); }
+async function fetchMusic(prompt) { const r = await api('music', { prompt }); if (!r.ok) throw new Error('music'); return await r.arrayBuffer(); }
+async function doBuild(req) { busy = true; const prev = cur, isNew = !prev || req.fresh, id = isNew ? Date.now().toString(36) : prev.id; live = false; post({ type: 'pause', on: true });
+  show('build'); setProg(0.03); $('buildSay').textContent = req.say; say(req.say); let fi = 0;
+  const filler = setInterval(() => { if (!speaking && M.mode === 'build') { const t = FILL[fi++ % FILL.length]; $('buildSay').textContent = t; say(t); } }, 11000);
+  let musicP = null; if (isNew) { stopMusic(); if (S.music) musicP = fetchMusic(req.music).catch(() => null); }
+  const body = { model: S.careful ? 'claude-sonnet-5-5' : 'claude-haiku-5-5', name: req.name || (prev && prev.name) || '', brief: req.brief, parts: S.parts, prev_code: !isNew && prev ? prev.code : (req.prevCode || undefined), error: req.error };
+  try { let res = await streamBuild(body), gm = assemble(res, { ...req, name: body.name }, id);
+    try { await launch(gm); } catch (err) { $('buildSay').textContent = 'Fixing a little hiccup…'; setProg(0.05); res = await streamBuild({ ...body, prev_code: res.code, error: err.message }); gm = assemble(res, { ...req, name: body.name }, id); await launch(gm); }
+    clearInterval(filler); if (!isNew && prev) gm.music = prev.music; cur = gm; cur.fixed = !!req.error; const i = S.games.findIndex(x => x.id === id); const sv = { id, name: gm.name, icon: gm.icon, brief: gm.brief, how: gm.how, music: gm.music, pre: gm.pre, code: gm.code, uses: gm.uses }; if (i >= 0) S.games[i] = sv; else { S.games.unshift(sv); for (const x of S.games.splice(8)) idbDel(x.id); } save();
+    if (musicP) musicP.then(ab => { if (ab) { idbPut(id, ab); if (cur && cur.id === id) playMusic(ab); } });
+    busy = false; M.change = false; hush(); sfx.magic(); show('play'); $('hudName').textContent = gm.name; caption(gm.how); say(gm.how);
+  } catch (e) { clearInterval(filler); busy = false; if (e.message === 'passcode') return; lastError = String(e.message);
+    if (prev && !isNew) { cur = prev; try { await launch(prev); } catch (e2) {} show('talk'); M.change = true; show('talk'); say('Oh no, my magic fizzled. Shall we try a different change?', autoListen); }
+    else { closeGame(); show('talk'); say('Oh no, my magic fizzled. Tell me again, what game shall we make?', autoListen); } } }
+let lastError = '';
+function crash(msg) { if (!cur || busy) return; lastError = msg; live = false; cur.crashes = (cur.crashes || 0) + 1; if (cur.crashes > 2) { M.change = true; post({ type: 'pause', on: true }); show('talk'); say('Oh dear, this game keeps tripping. What shall we change?', autoListen); return; } if (cur.fixed) { caption('Pip is tidying up…'); launch(cur).catch(() => {}); return; }
+  doBuild({ say: 'Oops, a little hiccup. I will fix it!', brief: cur.brief, name: cur.name, music: cur.music, fresh: false, error: msg }); }
+async function openSaved(x) { audio(); hush(); closeGame(); convo = []; turns = 0; M.change = false; show('build'); $('buildSay').textContent = `Opening ${x.name}…`; setProg(0.6);
+  try { await launch(x); cur = { ...x, fixed: false }; show('play'); $('hudName').textContent = x.name; sfx.magic(); caption(x.how); say(x.how); const ab = await idbGet(x.id); if (ab && cur && cur.id === x.id) playMusic(ab); }
+  catch (e) { cur = { ...x, fixed: false }; doBuild({ say: 'This one needs a little fixing. One moment!', brief: x.brief, name: x.name, music: x.music, fresh: false, error: e.message }); } }
+function goHome() { hush(); busy = false; closeGame(); M.change = false; show('home'); renderShelf(); }
+
+/* ---------- Pip on the big canvas ---------- */
 const stars = Array.from({ length: 80 }, () => ({ x: Math.random(), y: Math.random(), p: rnd(TAU), r: rnd(0.8, 2.2) }));
 let T = 0;
-function drawGenie() { g.setTransform(DPR, 0, 0, DPR, 0, 0); const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#2a1f5c'); gr.addColorStop(0.6, '#5a3aa8'); gr.addColorStop(1, '#b06ad6'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+function sprite(x, y, s, fn) { g.fillStyle = 'rgba(0,0,0,.16)'; ell(x, y, 22 * s, 7 * s); g.fill(); g.save(); g.translate(x, y); g.scale(s, s); fn(); g.restore(); }
+function drawPip() { g.setTransform(DPR, 0, 0, DPR, 0, 0); const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#2a1f5c'); gr.addColorStop(0.6, '#5a3aa8'); gr.addColorStop(1, '#b06ad6'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
   for (const s of stars) { g.fillStyle = `rgba(255,255,255,${0.35 + 0.4 * Math.sin(T * 2 + s.p)})`; ell(s.x * W, s.y * H, s.r, s.r); g.fill(); }
-  let fy, sc; if (M.mode === 'home') { const top = 96, bot = H - (S.games.length ? 250 : 130); fy = top + (bot - top) * 0.86; sc = clamp((bot - top) / 118, 1, 3); } else { const sp = clamp(H * 0.34, 150, 300); fy = safeTop + 10 + sp - 12; sc = (sp - 30) / 104; }
-  const d = M.mode === 'home' ? {} : (M.edit && game ? game.r : M.draft), bob = Math.sin(T * (speaking ? 9 : 2.4)) * (speaking ? 3 : 5) * sc * 0.4;
-  const pc = d.place ? PLACE[d.place].bg : 'rgba(255,255,255,.16)'; g.fillStyle = pc; ell(W / 2, fy + 4, Math.min(W * 0.46, 150 * sc), 13 * sc); g.fill();
-  if (d.place) { g.save(); g.translate(W / 2 + Math.min(W * 0.4, 128 * sc), fy + 2); g.scale(sc * 0.42, sc * 0.42); DECOR[PLACE[d.place].decor[0]](); g.restore(); }
-  for (let i = 0; i < 9; i++) { const a = T * 0.9 + i * TAU / 9, r = 62 * sc; g.fillStyle = ['#ffe14d', '#ff9ed2', '#7fd4ff'][i % 3]; g.globalAlpha = 0.5 + 0.5 * Math.sin(T * 4 + i); const x = W / 2 + Math.cos(a) * r, y = fy - 50 * sc + Math.sin(a) * r * 0.62; g.save(); g.translate(x, y); g.scale(sc * 0.2, sc * 0.2); THING.star(); g.restore(); } g.globalAlpha = 1;
-  sprite(W / 2, fy, sc, 1, () => { g.translate(0, bob / sc - 4); drawChar('unicorn', T * 0.6); });
-  const side = Math.min(W * 0.3, 92 * sc);
-  if (d.hero) sprite(W / 2 - side, fy + 2, sc * 0.5 * (KID[d.hero] ? 0.78 : 1), 1, () => drawChar(d.hero, T));
-  if (d.friends && d.friends !== 'none') sprite(W / 2 + side, fy + 2, sc * 0.4, -1, () => drawAnimal(d.friends, T + 1));
-  if (d.thing) { g.save(); g.translate(W / 2 - side * 0.52, fy - 70 * sc + Math.sin(T * 3) * 4); g.scale(sc * 0.7, sc * 0.7); THING[d.thing](T); g.restore(); }
-  if (d.trouble && d.trouble !== 'none') { g.save(); g.translate(W / 2 + side * 0.6, fy - 52 * sc + Math.sin(T * 2) * 4); g.scale(sc * 0.42, sc * 0.42); TROUBLE[d.trouble](T); g.restore(); } }
-
-/* ---------- the maker: interview, recipe, changes ---------- */
-var M = { mode: 'home', slot: null, draft: {}, edit: false, id: null };
-const cap = document.createElement('div'); cap.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(112px + env(safe-area-inset-bottom));background:rgba(255,255,255,.94);border-radius:18px;padding:6px 16px;font-weight:800;font-size:19px;width:max-content;max-width:86vw;text-align:center;pointer-events:none;transition:opacity .4s;opacity:0;z-index:3'; document.body.appendChild(cap); let capT = 0;
-function caption(t) { cap.textContent = t; cap.style.opacity = 1; clearTimeout(capT); capT = setTimeout(() => cap.style.opacity = 0, 2200 + t.length * 60); }
-function show(mode) { M.mode = mode; $('home').hidden = mode !== 'home'; $('talk').hidden = !(mode === 'ask' || mode === 'change'); $('hud').hidden = mode !== 'play'; $('win').hidden = !(mode === 'play' && game && game.state === 'win'); if (mode !== 'play') cap.style.opacity = 0; micUI(); }
-function icon(fn) { const c = document.createElement('canvas'); c.width = c.height = 152; const old = g; g = c.getContext('2d'); g.scale(2, 2); try { fn(); } finally { g = old; } return c; }
-function iconFor(slot, k) { if (k === 'none') return null;
-  if (slot === 'hero' || slot === 'friends') return icon(() => { g.translate(38, 71); const s = KID[k] ? 0.6 : 0.8; g.scale(s, s); drawChar(k, 0.25); });
-  if (slot === 'thing') return icon(() => { g.translate(38, 38); g.scale(1.85, 1.85); THING[k](0); });
-  if (slot === 'trouble') return icon(() => { g.translate(38, k === 'cloud' ? 84 : 68); g.scale(0.95, 0.95); TROUBLE[k](0.3); });
-  return icon(() => { const p = PLACE[k]; rr(4, 9, 68, 58, 14); g.save(); g.clip(); g.fillStyle = p.bg; g.fillRect(0, 0, 76, 76); g.fillStyle = p.pt[0]; ell(20, 56, 16, 6); g.fill(); g.fillStyle = p.pt[1]; ell(56, 30, 13, 5); g.fill();
-    g.save(); g.translate(26, 58); g.scale(0.62, 0.62); DECOR[p.decor[0]](); g.restore(); g.save(); g.translate(56, 62); g.scale(0.5, 0.5); DECOR[p.decor[1]](); g.restore(); g.restore(); }); }
-function tile(label, ic, fn, alt, emo) { const b = document.createElement('button'); b.className = 'tile' + (alt ? ' alt' : ''); if (ic) b.appendChild(ic); else { const e = document.createElement('div'); e.className = 'emo'; e.textContent = emo || '🚫'; b.appendChild(e); }
-  const s = document.createElement('span'); s.textContent = label; b.appendChild(s); b.onclick = () => { audio(); sfx.tap(); fn(); }; $('tiles').appendChild(b); return b; }
-const tileLabel = (slot, k) => k === 'none' ? (slot === 'friends' ? 'Just me' : 'Nothing') : slot === 'friends' ? plural(k).replace(/^./, c => c.toUpperCase()) : LBL[k];
-function renderTiles(slot) { const box = $('tiles'); box.innerHTML = ''; box.scrollTop = 0;
-  if (slot === 'open') { tile("I'll pick", null, () => ask('hero'), false, '👆'); tile('Surprise me', null, surprise, true, '🎲'); return; }
-  for (const k of OPTS[slot]) tile(tileLabel(slot, k), iconFor(slot, k), () => choose(slot, k)).dataset.k = k;
-  tile('Surprise me', null, () => choose(slot, pick(OPTS[slot].filter(k => k !== 'none'))), true, '🎲'); }
-function ask(slot, pre = '') { M.slot = slot; $('heard').textContent = ''; renderTiles(slot); say(pre + ASK[slot], startListen); }
-const ackWord = (slot, k) => k === 'none' ? (slot === 'friends' ? 'just the hero' : 'nothing to dodge') : (slot === 'friends' || slot === 'thing') ? plural(k) : LBL[k].toLowerCase();
-function startMake() { audio(); sfx.magic(); game = null; M.draft = {}; M.edit = false; M.id = null; show('ask'); const hi = 'Hello! I am Pip, the wish unicorn. '; if (canListen()) ask('open', hi); else ask('hero', hi + "Let's make a game! "); }
-function surprise() { for (const k of ORDER) if (!M.draft[k]) M.draft[k] = pick(OPTS[k].filter(v => v !== 'none')); finish('Abracadabra! '); }
-function choose(slot, k) { if (M.edit) return applyEdit({ slots: { [slot]: k }, tweaks: [] }); M.draft[slot] = k; nextAsk(`${pick(['Ooh', 'Yes', 'Lovely', 'Wow'])}, ${ackWord(slot, k)}! `); }
-function nextAsk(pre) { const n = ORDER.find(k => !M.draft[k]); if (n) ask(n, pre); else finish(pre); }
-function finish(pre) { const r = cleanRecipe(M.draft); M.id = Date.now().toString(36); S.games.unshift({ id: M.id, r }); S.games.length = Math.min(12, S.games.length); save(); startPlay(r, `${pre}Ta da! Your game is ${nameOf(r)}. Touch where you want to go!`); }
-function startPlay(r, text, prev) { hush(); newGame(r, prev); M.edit = false; show('play'); $('hudName').textContent = nameOf(r); sfx.magic(); if (text) { caption(text); say(text); } }
-function goHome() { hush(); game = null; M.edit = false; show('home'); renderShelf(); }
-const TWEAK = { faster: ['speed', 1, 'Zoom zoom! Faster!'], slower: ['speed', -1, 'Nice and slow.'], more: ['count', 1, 'More to find!'], fewer: ['count', -1, 'Just a few.'], bigger: ['size', 1, 'Big, big, big!'], smaller: ['size', -1, 'Teeny tiny!'] };
-function openChange() { if (!game) return; audio(); sfx.magic(); M.edit = true; show('change'); changeMenu('What shall we change?'); }
-function changeMenu(text) { M.slot = 'change'; $('heard').textContent = ''; const box = $('tiles'); box.innerHTML = ''; const r = game.r;
-  tile('Play', null, resume, true, '▶️');
-  for (const [k, e] of [['faster', '🐇'], ['slower', '🐢'], ['more', '➕'], ['fewer', '➖'], ['bigger', '🐘'], ['smaller', '🐜']]) tile(k[0].toUpperCase() + k.slice(1), null, () => applyEdit({ slots: {}, tweaks: [k] }), false, e).dataset.k = k;
-  for (const s of ORDER) tile('New ' + s, iconFor(s, r[s]), () => { M.slot = s; renderTiles(s); say(ASK[s], startListen); }).dataset.k = s;
-  tile('New game', null, startMake, true, '🪄'); say(text, startListen); }
-function resume() { hush(); M.edit = false; show('play'); }
-function applyEdit(p) { const r = game.r, said = []; let rebuild = false, stuck = false;
-  for (const t of p.tweaks) { const [f, d, msg] = TWEAK[t], v = clamp(r[f] + d, 0, 3); if (v === r[f]) stuck = true; else { r[f] = v; said.push(msg); if (f === 'count') rebuild = true; } }
-  for (const k of ORDER) if (p.slots[k] && VALID[k].includes(p.slots[k]) && p.slots[k] !== r[k]) { r[k] = p.slots[k]; rebuild = true; said.push(`${ackWord(k, r[k]).replace(/^./, c => c.toUpperCase())}!`); }
-  if (!said.length) said.push(stuck ? 'That is as far as my magic goes!' : 'It is already like that!');
-  const sv = S.games.find(x => x.id === M.id); if (sv) { sv.r = cleanRecipe(r); save(); }
-  const text = 'Poof! ' + said.join(' ');
-  if (rebuild) { const prev = game; hush(); game = null; newGame(r, null); if (prev.r.friends === r.friends) { game.crew = prev.crew; } }
-  hush(); M.edit = false; show('play'); $('hudName').textContent = nameOf(r); sfx.magic(); caption(text); say(text); }
-function wish(text, ctx) { S.wishes.unshift({ t: String(text).slice(0, 160), c: ctx, d: new Date().toISOString().slice(0, 10) }); S.wishes.length = Math.min(60, S.wishes.length); save(); }
-/* what the microphone heard (or a typed test) comes in here */
-function hear(alts) { if (typeof alts === 'string') alts = [alts]; if (!(M.mode === 'ask' || M.mode === 'change')) return null; const ctx = M.slot;
-  let best = null, txt = ''; for (const a of alts) { const p = parse(a, ctx); if (!best || p.hits > best.hits) { best = p; txt = a; } }
-  $('heard').textContent = `I heard: “${txt}”`;
-  if (!best || !best.hits) { wish(txt, ctx); say("I don't know that wish yet. Can you tap a picture for me?", startListen); return best; }
-  if (best.restart) { startMake(); return best; }
-  if (M.mode === 'change') { applyEdit(best); return best; }
-  Object.assign(M.draft, best.slots); const words = Object.entries(best.slots).map(([k, v]) => ackWord(k, v)); nextAsk(`${pick(['Ooh', 'Yes', 'Lovely', 'Wow'])}, ${words.join(', ')}! `); return best; }
+  let fy, sc; const building = M.mode === 'build';
+  if (M.mode === 'talk') { const sp = clamp(H * 0.36, 150, 320); fy = 10 + sp - 12; sc = (sp - 30) / 104; }
+  else { const top = 96, bot = H - (building ? 190 : S.games.length ? 250 : 130); fy = top + (bot - top) * 0.86; sc = clamp((bot - top) / 118, 1, 3); }
+  const lively = speaking || building, bob = Math.sin(T * (lively ? 9 : 2.4)) * (lively ? 3 : 5) * sc * 0.4;
+  g.fillStyle = 'rgba(255,255,255,.16)'; ell(W / 2, fy + 4, Math.min(W * 0.46, 150 * sc), 13 * sc); g.fill();
+  const n = building ? 14 : 9, spin = building ? 2.6 : 0.9;
+  for (let i = 0; i < n; i++) { const a = T * spin + i * TAU / n, r = (building ? 70 + 14 * Math.sin(T * 2 + i) : 62) * sc; g.globalAlpha = 0.5 + 0.5 * Math.sin(T * 4 + i); const x = W / 2 + Math.cos(a) * r, y = fy - 50 * sc + Math.sin(a) * r * 0.62; g.save(); g.translate(x, y); g.scale(sc * 0.2, sc * 0.2); (i % 3 === 1 && building ? THING.heart : THING.star)(); g.restore(); } g.globalAlpha = 1;
+  if (micState === 'on' && M.mode === 'talk') { g.strokeStyle = `rgba(160,255,210,${0.35 + Math.min(0.6, micLevel * 8)})`; g.lineWidth = 4 * sc; for (const s of [-1, 1]) { g.beginPath(); g.arc(W / 2 + s * 30 * sc, fy - 62 * sc, (16 + Math.min(14, micLevel * 160)) * sc, s > 0 ? -0.9 : PI - 0.9, s > 0 ? 0.9 : PI + 0.9); g.stroke(); } }
+  for (let i = sparks.length - 1; i >= 0; i--) { const p = sparks[i]; p.life -= 1 / 60; if (p.life <= 0) { sparks.splice(i, 1); continue; } p.x += p.vx / 60; p.y += p.vy / 60; p.vy += 4; g.globalAlpha = Math.min(1, p.life * 2); g.fillStyle = p.c; ell(p.x, p.y, 4, 4); g.fill(); } g.globalAlpha = 1;
+  sprite(W / 2, fy, sc, () => { g.translate(0, bob / sc - 4); if (building) g.rotate(Math.sin(T * 5) * 0.08); drawChar('unicorn', T * (lively ? 1.4 : 0.6)); }); }
 
 /* ---------- home shelf + grown-up panel ---------- */
 function renderShelf() { const sh = $('shelf'); sh.innerHTML = ''; $('shelfT').hidden = !S.games.length;
-  for (const x of S.games) { const b = document.createElement('button'); b.className = 'tile'; b.style.flex = 'none'; b.appendChild(iconFor('hero', x.r.hero)); const s = document.createElement('span'); s.style.fontSize = '13px'; s.textContent = nameOf(x.r); b.appendChild(s);
-    b.onclick = () => { audio(); M.id = x.id; startPlay(x.r, `Let's play ${nameOf(x.r)}!`); }; sh.appendChild(b); } }
-function renderGrown() { $('optTalk').checked = S.talk; $('optListen').checked = S.listen && !!SR; $('optListen').disabled = !SR; $('optSound').checked = S.sound;
-  if (!SR) $('listenNote').textContent = 'This browser cannot listen (no speech recognition). The picture tiles still work. Chrome and Safari can listen.';
-  $('recipeOut').textContent = game ? JSON.stringify({ name: nameOf(game.r), recipe: game.r, modules: game.mods, round: game.round }, null, 1) : 'No game open. Start one, then come back here from the home screen.';
-  const wl = $('wishList'); wl.innerHTML = ''; if (!S.wishes.length) wl.textContent = 'None yet.'; else { const ul = document.createElement('ul'); for (const w of S.wishes) { const li = document.createElement('li'); li.textContent = `“${w.t}” (${w.c}, ${w.d})`; ul.appendChild(li); } wl.appendChild(ul); }
+  for (const x of S.games) { const b = document.createElement('button'); b.className = 'tile'; const e = document.createElement('div'); e.className = 'emo'; e.textContent = x.icon || '🎮'; const s = document.createElement('span'); s.textContent = x.name; b.append(e, s); b.onclick = () => openSaved(x); sh.appendChild(b); } }
+function renderGrown() { for (const [id, k] of [['optVoice', 'voice'], ['optMusic', 'music'], ['optSound', 'sound'], ['optAuto', 'auto'], ['optCareful', 'careful']]) $(id).checked = S[k];
+  const x = cur || lastGame; $('gInfo').textContent = x ? `${x.icon} ${x.name}\n\nWhat the child asked for (Pip's brief):\n${x.brief}\n\nMusic: ${x.music || '—'}\nParts used: ${(x.uses || []).join(', ') || 'none'}${lastError ? '\n\nLast error: ' + lastError : ''}` : 'No game open. Open one, then come back here from the home screen.';
+  $('gCode').textContent = x ? (x.pre ? '// ---- parts ----\n' + x.pre + '\n\n// ---- game ----\n' : '') + x.code : '—';
+  const pl = $('partList'); pl.innerHTML = ''; if (!S.parts.length) pl.textContent = 'Empty so far.'; else { const ul = document.createElement('ul'); for (const p of S.parts) { const li = document.createElement('li'); li.textContent = `${p.name}: ${p.about}`; ul.appendChild(li); } pl.appendChild(ul); }
+  $('gTalk').textContent = lastTalk.length ? lastTalk.map(m => `${m.role === 'user' ? 'Child' : 'Pip'}: ${m.content}`).join('\n') : '—';
   const sl = $('savedList'); sl.innerHTML = ''; if (!S.games.length) sl.textContent = 'None yet.';
-  for (const x of S.games) { const d = document.createElement('div'); d.textContent = nameOf(x.r) + ' '; const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Delete'; b.onclick = () => { S.games = S.games.filter(y => y !== x); save(); renderGrown(); renderShelf(); }; d.appendChild(b); sl.appendChild(d); } }
-let lastGame = null;
+  for (const y of S.games) { const d = document.createElement('div'); d.textContent = `${y.icon} ${y.name} `; const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Delete'; b.onclick = () => { S.games = S.games.filter(z => z !== y); idbDel(y.id); save(); renderGrown(); renderShelf(); }; d.appendChild(b); sl.appendChild(d); } }
+let lastGame = null, lastTalk = [];
 function openGrown() { hush(); renderGrown(); $('grown').hidden = false; }
 $('grownClose').onclick = () => { $('grown').hidden = true; };
-$('optTalk').onchange = e => { S.talk = e.target.checked; save(); if (!S.talk) hush(); };
-$('optListen').onchange = e => { S.listen = e.target.checked; save(); };
-$('optSound').onchange = e => { S.sound = e.target.checked; save(); };
-$('wishClear').onclick = () => { S.wishes = []; save(); renderGrown(); };
-$('wishGo').onclick = () => { const t = $('wishIn').value.trim(); if (!t) return; const a = parse(t, 'open'), b = parse(t, 'change'), o = $('wishOut'); o.hidden = false;
-  o.textContent = 'As a new game: ' + JSON.stringify(a.slots) + '\nAs a change: ' + JSON.stringify({ ...b.slots, tweaks: b.tweaks, restart: b.restart }) + (a.hits + b.hits ? '' : '\nNothing understood. Added to the list below.');
-  if (!(a.hits + b.hits)) { wish(t, 'typed'); renderGrown(); } };
+for (const [id, k] of [['optVoice', 'voice'], ['optMusic', 'music'], ['optSound', 'sound'], ['optAuto', 'auto'], ['optCareful', 'careful']]) $(id).onchange = e => { S[k] = e.target.checked; save(); if (k === 'music' && !S.music) stopMusic(); if (k === 'voice' && !S.voice) stopVoice(); };
+$('partClear').onclick = () => { S.parts = []; save(); renderGrown(); };
+$('forget').onclick = () => { PASSC = ''; try { localStorage.removeItem(PKEY); } catch (e) {} $('grown').hidden = true; show('gate'); };
 let gearT = 0; const gear = $('gear');
 gear.addEventListener('pointerdown', e => { e.preventDefault(); $('gearHint').classList.add('on'); gearT = setTimeout(() => { gearT = 0; $('gearHint').classList.remove('on'); openGrown(); }, 1100); });
 for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) gear.addEventListener(ev, () => { if (gearT) { clearTimeout(gearT); gearT = 0; setTimeout(() => $('gearHint').classList.remove('on'), 1400); } });
 
-/* ---------- buttons, pointer, keys ---------- */
+/* ---------- buttons ---------- */
+async function tryGate() { const v = $('gateIn').value.trim(); if (!v) return; audio(); PASSC = v; $('gateMsg').textContent = 'Checking…'; try { const r = await fetch(`${API}?op=ping`, { method: 'POST', headers: { 'x-maker-pass': PASSC } }); if (r.ok) { try { localStorage.setItem(PKEY, PASSC); } catch (e) {} $('gateMsg').textContent = ''; show('home'); renderShelf(); } else { PASSC = ''; $('gateMsg').textContent = 'That passcode did not work.'; } } catch (e) { $('gateMsg').textContent = 'Could not reach the server.'; } }
+$('gateGo').onclick = tryGate; $('gateIn').addEventListener('keydown', e => { if (e.key === 'Enter') tryGate(); });
 $('make').onclick = startMake;
-$('back').onclick = () => { sfx.tap(); if (M.mode === 'change') { if (M.slot !== 'change') changeMenu('What shall we change?'); else resume(); } else goHome(); };
-$('homeBtn').onclick = goHome;
+$('back').onclick = () => { sfx.tap(); if (M.change && cur) resume(); else goHome(); };
+$('homeBtn').onclick = () => { lastGame = cur; lastTalk = convo.slice(); goHome(); };
 $('wand').onclick = openChange;
-$('again').onclick = () => { audio(); if (game && game.state === 'win') nextRound(); };
-$('mic').onclick = () => { audio(); if (rec) stopListen(); else { hush(); startListen(); } };
-const keys = {};
-addEventListener('keydown', e => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = true; if (M.mode === 'play' && e.key.startsWith('Arrow')) e.preventDefault(); });
-addEventListener('keyup', e => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
-let down = false;
-function toWorld(e) { return { x: clamp(e.clientX / VS + camX, 36, WW - 36), y: clamp(e.clientY / VS + camY + 10, 80, WH - 24) }; }
-cv.addEventListener('pointerdown', e => { audio(); if (M.mode !== 'play' || !game || game.state !== 'play') return; down = true; game.target = toWorld(e); });
-cv.addEventListener('pointermove', e => { if (down && M.mode === 'play' && game && game.state === 'play') game.target = toWorld(e); });
-for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, () => { down = false; });
+$('mic').onclick = () => { audio(); if (busy) return; if (rec) stopListen(false); else { hush(); setMic('idle'); listen(); } };
+$('keys').onclick = () => { const t = $('typeRow'); t.hidden = !t.hidden; if (!t.hidden) $('typeIn').focus(); };
+function typed() { const v = $('typeIn').value.trim(); if (!v || busy) return; $('typeIn').value = ''; audio(); onHeard(v.slice(0, 400)); }
+$('typeGo').onclick = typed; $('typeIn').addEventListener('keydown', e => { if (e.key === 'Enter') typed(); });
+$('now').onclick = () => { audio(); if (busy) return; if (M.change && cur) resume(); else onHeard('(Please make the game now with what you know so far.)', true); };
+const sparks = [];
+cv.addEventListener('pointerdown', e => { audio(); if (M.mode === 'build' || M.mode === 'home') { sfx.pop(); for (let i = 0; i < 12; i++) { const a = rnd(TAU), v = rnd(60, 220); sparks.push({ x: e.clientX, y: e.clientY, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, life: rnd(0.5, 1), c: pick(['#ffe14d', '#ff9ed2', '#7fd4ff', '#fff']) }); } } });
 cv.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
 for (const ev of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
 document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
-document.addEventListener('contextmenu', e => e.preventDefault());
-document.addEventListener('visibilitychange', () => { if (document.hidden) hush(); });
+document.addEventListener('contextmenu', e => { if (!e.target.closest('#grown,input')) e.preventDefault(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { hush(); if (mGain && AC) mGain.gain.setTargetAtTime(0.0001, AC.currentTime, 0.1); } else duck(false); });
 
 /* ---------- loop ---------- */
 { const c = $('wand').firstElementChild, old = g; g = c.getContext('2d'); g.translate(84, 176); g.scale(2.1, 2.1); drawChar('unicorn', 0.2); g = old; }
 let last = performance.now();
-function frame(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt;
-  if (M.mode === 'play' && game) { updateGame(dt); drawGame(); } else drawGenie();
-  requestAnimationFrame(frame); }
-renderShelf(); show('home'); requestAnimationFrame(frame);
-window.__genie = { M, S, parse, hear, choose, startMake, openChange, applyEdit, openGrown, goHome, nameOf, cleanRecipe, modulesFor, game: () => game, update(dt) { if (game) updateGame(dt); }, OPTS, ORDER };
+function loop(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt; if (M.mode !== 'play' && M.mode !== 'gate') drawPip(); requestAnimationFrame(loop); }
+show(PASSC ? 'home' : 'gate'); renderShelf(); requestAnimationFrame(loop);
+window.__genie = { M, S, onHeard, startMake, openChange, openGrown, goHome, doBuild, state: () => ({ mode: M.mode, busy, speaking, mic: micState, cur: cur && { name: cur.name, icon: cur.icon, how: cur.how, uses: cur.uses, len: cur.code.length }, live, lastError, convo }) };
+
 </script>
 </body>
 </html>
