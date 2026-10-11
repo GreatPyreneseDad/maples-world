@@ -120,6 +120,7 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
 </div>
 
 <div id="build" class="layer" hidden>
+  <button id="stopBuild" class="rnd" style="position:fixed;left:10px;top:calc(10px + env(safe-area-inset-top))" aria-label="Stop and go back">←</button>
   <div id="buildSay"></div>
   <div id="bar"><i></i></div>
 </div>
@@ -449,7 +450,7 @@ async function idbPut(k, v) { try { const d = await idb(); await new Promise((re
 async function idbGet(k) { try { const d = await idb(); return await new Promise((res, rej) => { const q = d.transaction('music').objectStore('music').get(k); q.onsuccess = () => res(q.result || null); q.onerror = rej; }); } catch (e) { return null; } }
 async function idbDel(k) { try { const d = await idb(); d.transaction('music', 'readwrite').objectStore('music').delete(k); } catch (e) {} }
 
-async function api(op, body, blob) { const r = await fetch(`${API}?op=${op}`, { method: 'POST', headers: { 'x-maker-pass': PASSC, 'content-type': blob ? (blob.type || 'audio/webm') : 'application/json' }, body: blob || JSON.stringify(body || {}) });
+async function api(op, body, blob, signal) { const r = await fetch(`${API}?op=${op}`, { method: 'POST', signal, headers: { 'x-maker-pass': PASSC, 'content-type': blob ? (blob.type || 'audio/webm') : 'application/json' }, body: blob || JSON.stringify(body || {}) });
   if (r.status === 401) { PASSC = ''; try { localStorage.removeItem(PKEY); } catch (e) {} hush(); show('gate'); throw new Error('passcode'); } return r; }
 
 /* ---------- sound: one AudioContext for effects, Pip's voice and music ---------- */
@@ -518,8 +519,13 @@ function resume(text) { hush(); M.change = false; show('play'); post({ type: 'pa
 /* ---------- building: Claude writes the game, we seal it in a frame ---------- */
 const FILL = ['Stirring in the sparkles!', 'Adding a pinch of giggles!', 'Mixing, mixing, mixing!', 'Sprinkling the stardust!', 'Almost ready!', 'Just a little more magic!'];
 function setProg(p) { $('bar').firstElementChild.style.width = Math.round(clamp(p, 0, 1) * 100) + '%'; }
-async function streamBuild(body) { const r = await api('build', body); if (r.status === 429) throw new Error('cap'); if (!r.ok || !r.body) { let m = 'build failed'; try { m = (await r.json()).error || m; } catch (e) {} throw new Error(m); }
-  const rd = r.body.getReader(), dec = new TextDecoder(); let txt = ''; for (;;) { const { done, value } = await rd.read(); if (done) break; txt += dec.decode(value, { stream: true }); setProg(0.05 + 0.9 * Math.min(1, txt.length / 7000)); }
+let buildAbort = null, buildCancelled = false;
+async function streamBuild(body) { const ac = new AbortController(); buildAbort = ac; let stall = 0, why = ''; const arm = ms => { clearTimeout(stall); stall = setTimeout(() => { why = 'stalled'; ac.abort(); }, ms); }; const total = setTimeout(() => { why = 'stalled'; ac.abort(); }, 170000);
+  let txt = ''; const want = 7000 + (body.prev_code ? body.prev_code.length : 0);
+  try { arm(40000); const r = await api('build', body, null, ac.signal); if (r.status === 429) throw new Error('cap'); if (!r.ok || !r.body) { let m = 'build failed'; try { m = (await r.json()).error || m; } catch (e) {} throw new Error(m); }
+    const rd = r.body.getReader(), dec = new TextDecoder(); for (;;) { arm(25000); const { done, value } = await rd.read(); if (done) break; txt += dec.decode(value, { stream: true }); setProg(0.05 + 0.9 * Math.min(1, txt.length / want)); if (txt.includes('</code>')) { try { rd.cancel(); } catch (e) {} break; } }
+  } catch (e) { if (buildCancelled) throw new Error('cancelled'); if (why || e.name === 'AbortError' || e instanceof TypeError) throw new Error('stalled'); throw e; }
+  finally { clearTimeout(stall); clearTimeout(total); if (buildAbort === ac) buildAbort = null; }
   const tag = n => { const m = txt.match(new RegExp(`<${n}>([\\s\\S]*?)</${n}>`)); return m ? m[1].trim() : ''; };
   const err = tag('error'); if (err) throw new Error(err);
   let code = tag('code'); if (!code) { const i = txt.indexOf('<code>'); if (i >= 0) code = txt.slice(i + 6).trim(); } if (!code) throw new Error('no code came back');
@@ -550,23 +556,25 @@ addEventListener('message', e => { if (e.source !== frame.contentWindow || !e.da
   else if (d.type === 'say') { if (!speaking) { caption(String(d.text)); say(String(d.text).slice(0, 90)); } } });
 function closeGame() { live = false; waiter = null; frame.srcdoc = ''; frame.hidden = true; cur = null; stopMusic(); }
 async function fetchMusic(prompt) { const r = await api('music', { prompt }); if (!r.ok) throw new Error('music'); return await r.arrayBuffer(); }
-async function doBuild(req) { busy = true; const prev = cur, isNew = !prev || req.fresh, id = isNew ? Date.now().toString(36) : prev.id; live = false; post({ type: 'pause', on: true });
+async function doBuild(req) { busy = true; buildCancelled = false; const prev = cur, isNew = !prev || req.fresh, id = isNew ? Date.now().toString(36) : prev.id; live = false; post({ type: 'pause', on: true });
   show('build'); setProg(0.03); $('buildSay').textContent = req.say; say(req.say); let fi = 0;
   const filler = setInterval(() => { if (!speaking && M.mode === 'build') { const t = FILL[fi++ % FILL.length]; $('buildSay').textContent = t; say(t); } }, 11000);
   let musicP = null; if (isNew) { stopMusic(); if (S.music) musicP = fetchMusic(req.music).catch(() => null); }
   const body = { model: 'claude-sonnet-5-5', name: req.name || (prev && prev.name) || '', brief: req.brief, parts: S.parts, prev_code: !isNew && prev ? prev.code : (req.prevCode || undefined), error: req.error };
   try { let res = null, gm = null, lastErr = null; const rq = { ...req, name: body.name };
     for (let attempt = 0; attempt < 3; attempt++) { let b2 = body;
-      if (attempt === 1) b2 = { ...body, model: 'claude-sonnet-5-5', prev_code: res ? res.code : body.prev_code, error: lastErr };
-      if (attempt === 2) b2 = { ...body, model: 'claude-sonnet-5-5', error: undefined };
-      if (attempt) { $('buildSay').textContent = 'Fixing a little hiccup…'; setProg(0.05); }
+      const net = lastErr === 'stalled';
+      if (attempt === 1 && !net) b2 = { ...body, prev_code: res ? res.code : body.prev_code, error: lastErr };
+      if (attempt === 2 && !net) b2 = { ...body, error: undefined };
+      if (attempt) { $('buildSay').textContent = net ? 'The magic got tangled. Trying again…' : 'Fixing a little hiccup…'; setProg(0.05); res = net ? null : res; }
       try { res = await streamBuild(b2); gm = assemble(res, rq, id); await launch(gm); lastErr = null; break; }
-      catch (err) { if (err.message === 'passcode' || err.message === 'cap') throw err; lastErr = String(err.message); fails.push({ stage: 'try' + attempt, error: lastErr, code: gm && gm.code }); report('try' + attempt, lastErr, res ? res.code : ''); gm = null; } }
+      catch (err) { if (err.message === 'passcode' || err.message === 'cap' || err.message === 'cancelled') throw err; lastErr = String(err.message); fails.push({ stage: 'try' + attempt, error: lastErr, code: gm && gm.code }); report('try' + attempt, lastErr, res ? res.code : ''); gm = null; } }
     if (!gm) throw new Error(lastErr || 'build failed');
     clearInterval(filler); if (!isNew && prev) gm.music = prev.music; cur = gm; cur.fixed = !!req.error; const i = S.games.findIndex(x => x.id === id); const sv = { id, name: gm.name, icon: gm.icon, brief: gm.brief, how: gm.how, music: gm.music, pre: gm.pre, code: gm.code, uses: gm.uses, pub: i >= 0 ? S.games[i].pub : undefined, pubStale: i >= 0 && !!S.games[i].pub }; if (i >= 0) S.games[i] = sv; else { S.games.unshift(sv); for (const x of S.games.splice(8)) idbDel(x.id); } save();
     if (musicP) musicP.then(ab => { if (ab) { idbPut(id, ab); if (cur && cur.id === id) playMusic(ab); } });
     busy = false; M.change = false; hush(); sfx.magic(); show('play'); $('hudName').textContent = gm.name; caption(gm.how); say(gm.how);
   } catch (e) { clearInterval(filler); busy = false; if (e.message === 'passcode') return;
+    if (e.message === 'cancelled') { hush(); if (prev) { cur = prev; try { await launch(prev); } catch (e2) {} resume(); } else { closeGame(); show('home'); renderShelf(); } return; }
     if (e.message === 'cap') { const t = 'I am all out of magic for today. Come back tomorrow for more!'; if (prev) { cur = prev; try { await launch(prev); } catch (e2) {} resume(t); } else { closeGame(); show('home'); renderShelf(); caption(t); say(t); } return; }
     lastError = String(e.message); fails.push({ stage: 'final', error: lastError }); report('final', lastError, '');
     if (prev && !isNew) { cur = prev; try { await launch(prev); } catch (e2) {} show('talk'); M.change = true; show('talk'); say('Oh no, my magic fizzled. Shall we try a different change?', autoListen); }
@@ -630,6 +638,7 @@ for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) gear.addEventLi
 async function tryGate() { const v = $('gateIn').value.trim(); if (!v) return; audio(); PASSC = v; $('gateMsg').textContent = 'Checking…'; try { const r = await fetch(`${API}?op=ping`, { method: 'POST', headers: { 'x-maker-pass': PASSC } }); if (r.ok) { try { localStorage.setItem(PKEY, PASSC); } catch (e) {} $('gateMsg').textContent = ''; show('home'); renderShelf(); } else { PASSC = ''; $('gateMsg').textContent = 'That passcode did not work.'; } } catch (e) { $('gateMsg').textContent = 'Could not reach the server.'; } }
 $('gateGo').onclick = tryGate; $('gateIn').addEventListener('keydown', e => { if (e.key === 'Enter') tryGate(); });
 $('make').onclick = startMake;
+$('stopBuild').onclick = () => { buildCancelled = true; if (buildAbort) buildAbort.abort(); };
 $('back').onclick = () => { sfx.tap(); if (M.change && cur) resume(); else goHome(); };
 $('homeBtn').onclick = () => { lastGame = cur; lastTalk = convo.slice(); goHome(); };
 $('wand').onclick = openChange;

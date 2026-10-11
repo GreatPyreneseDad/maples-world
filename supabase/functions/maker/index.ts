@@ -93,7 +93,7 @@ RULES
 - Movement uses dt. Keep arrays small (remove old objects). Never use unbounded loops.
 - No DOM, no document or window access, no network, no storage, no timers (use kit.t and dt), no alert. No images or audio other than kit.
 - Never throw. Check that things exist before using them.
-- Plain JavaScript, no imports, about 80 to 220 lines. Declare your state with let/const at the top of the code.
+- Plain JavaScript, no imports, about 80 to 220 lines, never more than 320. When changing an existing game, keep it compact: rewrite and simplify rather than only adding, and drop anything the change makes unnecessary. Declare your state with let/const at the top of the code.
 
 PARTS (a growing library of reusable helpers)
 If you write a helper that would be useful in other games (for example flyTo, wobble, drawRainbow, bounceOff, spawnRing), put it in a <part> instead of in <code>. A part is one self-contained function that only uses its arguments, ctx, W, H and kit. Parts are loaded before your code. You may also receive existing library parts: reuse them when they fit by listing their names in <use>; do not redefine them. Never declare a variable or function in <code> with the same name as a part, and never redeclare W, H, ctx or kit.
