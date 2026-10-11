@@ -399,7 +399,9 @@ function fail(e) { if (dead) return; dead = true; post({ type: 'error', message:
 </script>
 <script type="text/plain" id="rt2">
 (function () {
-  if (typeof game !== 'object' || !game || typeof game.update !== 'function' || typeof game.draw !== 'function') return fail(new Error('The code did not define const game = { init, update, draw }'));
+  let game = null;
+  try { game = new Function('kit', 'ctx', __SRC + '\n;return (typeof game !== "undefined") ? game : null;')(kit, ctx); } catch (e) { return fail(new Error((e && e.name || 'Error') + ' while loading the code: ' + (e && e.message || e))); }
+  if (typeof game !== 'object' || !game || typeof game.update !== 'function' || typeof game.draw !== 'function') return fail(new Error('The code must define, at the top level of <code>: const game = { init() {}, update(dt) {}, draw() {} };'));
   try { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); if (game.init) game.init(); } catch (e) { return fail(e); }
   function loop(now) { if (dead) return; requestAnimationFrame(loop); const dt = Math.min(0.05, Math.max(0.001, (now - lastT) / 1000)); lastT = now; if (paused) return;
     kit.t += dt; sounds = 0; const t0 = performance.now();
@@ -529,10 +531,11 @@ function assemble(res, req, id) { const mine = new Map(res.parts.map(p => [p.nam
   return { id, name: (req.name || 'My Game').slice(0, 60), icon: res.icon, brief: req.brief, how: res.how || 'Touch the screen to play!', music: req.music || '', pre: pre.join('\n\n'), code: res.code, uses: [...res.use, ...res.parts.map(p => p.name)] }; }
 const SO = '<' + 'script>', SC = '<' + '/script>';
 const esc = s => String(s).replace(new RegExp('<' + '/script', 'gi'), '<\\/script').replace(new RegExp('<' + '!--', 'g'), '<\\!--');
-function frameDoc(gm) { return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'"><style>html,body{margin:0;height:100%;overflow:hidden;background:#2a1f5c;touch-action:none;user-select:none;-webkit-user-select:none}canvas{display:block;width:100%;height:100%;touch-action:none}</style></head><body><canvas id="c"></canvas>
-${SO}window.onerror=function(m,s,l){try{parent.postMessage({gm:1,type:'error',message:String(m)+' (line '+l+')',frames:-1},'*')}catch(e){}return true};${SC}
+function frameDoc(gm) { const src = JSON.stringify((gm.pre || '') + '\n;\n' + gm.code).replace(/<\//g, '<\\/').replace(new RegExp('<' + '!--', 'g'), '<\\!--').replace(/\u2028|\u2029/g, ' ');
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'"><style>html,body{margin:0;height:100%;overflow:hidden;background:#2a1f5c;touch-action:none;user-select:none;-webkit-user-select:none}canvas{display:block;width:100%;height:100%;touch-action:none}</style></head><body><canvas id="c"></canvas>
+${SO}window.onerror=function(m,s,l){try{parent.postMessage({gm:1,type:'error',message:String(m),frames:-1},'*')}catch(e){}return true};${SC}
 ${SO}${LIB}${SC}${SO}${RT}${SC}
-${SO}${esc(gm.pre)}\n;\n${esc(gm.code)}\n${SC}
+${SO}var __SRC = ${src};${SC}
 ${SO}${RT2}${SC}</body></html>`; }
 const post = m => { try { frame.contentWindow.postMessage(Object.assign({ gm: 1 }, m), '*'); } catch (e) {} };
 let waiter = null, live = false;
@@ -552,16 +555,23 @@ async function doBuild(req) { busy = true; const prev = cur, isNew = !prev || re
   const filler = setInterval(() => { if (!speaking && M.mode === 'build') { const t = FILL[fi++ % FILL.length]; $('buildSay').textContent = t; say(t); } }, 11000);
   let musicP = null; if (isNew) { stopMusic(); if (S.music) musicP = fetchMusic(req.music).catch(() => null); }
   const body = { model: S.careful ? 'claude-sonnet-5-5' : 'claude-haiku-5-5', name: req.name || (prev && prev.name) || '', brief: req.brief, parts: S.parts, prev_code: !isNew && prev ? prev.code : (req.prevCode || undefined), error: req.error };
-  try { let res = await streamBuild(body), gm = assemble(res, { ...req, name: body.name }, id);
-    try { await launch(gm); } catch (err) { $('buildSay').textContent = 'Fixing a little hiccup…'; setProg(0.05); res = await streamBuild({ ...body, prev_code: res.code, error: err.message }); gm = assemble(res, { ...req, name: body.name }, id); await launch(gm); }
+  try { let res = null, gm = null, lastErr = null; const rq = { ...req, name: body.name };
+    for (let attempt = 0; attempt < 3; attempt++) { let b2 = body;
+      if (attempt === 1) b2 = { ...body, model: 'claude-sonnet-5-5', prev_code: res ? res.code : body.prev_code, error: lastErr };
+      if (attempt === 2) b2 = { ...body, model: 'claude-sonnet-5-5', error: undefined };
+      if (attempt) { $('buildSay').textContent = 'Fixing a little hiccup…'; setProg(0.05); }
+      try { res = await streamBuild(b2); gm = assemble(res, rq, id); await launch(gm); lastErr = null; break; }
+      catch (err) { if (err.message === 'passcode') throw err; lastErr = String(err.message); fails.push({ stage: 'try' + attempt, error: lastErr, code: gm && gm.code }); report('try' + attempt, lastErr, res ? res.code : ''); gm = null; } }
+    if (!gm) throw new Error(lastErr || 'build failed');
     clearInterval(filler); if (!isNew && prev) gm.music = prev.music; cur = gm; cur.fixed = !!req.error; const i = S.games.findIndex(x => x.id === id); const sv = { id, name: gm.name, icon: gm.icon, brief: gm.brief, how: gm.how, music: gm.music, pre: gm.pre, code: gm.code, uses: gm.uses }; if (i >= 0) S.games[i] = sv; else { S.games.unshift(sv); for (const x of S.games.splice(8)) idbDel(x.id); } save();
     if (musicP) musicP.then(ab => { if (ab) { idbPut(id, ab); if (cur && cur.id === id) playMusic(ab); } });
     busy = false; M.change = false; hush(); sfx.magic(); show('play'); $('hudName').textContent = gm.name; caption(gm.how); say(gm.how);
-  } catch (e) { clearInterval(filler); busy = false; if (e.message === 'passcode') return; lastError = String(e.message);
+  } catch (e) { clearInterval(filler); busy = false; if (e.message === 'passcode') return; lastError = String(e.message); fails.push({ stage: 'final', error: lastError }); report('final', lastError, '');
     if (prev && !isNew) { cur = prev; try { await launch(prev); } catch (e2) {} show('talk'); M.change = true; show('talk'); say('Oh no, my magic fizzled. Shall we try a different change?', autoListen); }
     else { closeGame(); show('talk'); say('Oh no, my magic fizzled. Tell me again, what game shall we make?', autoListen); } } }
-let lastError = '';
-function crash(msg) { if (!cur || busy) return; lastError = msg; live = false; cur.crashes = (cur.crashes || 0) + 1; if (cur.crashes > 2) { M.change = true; post({ type: 'pause', on: true }); show('talk'); say('Oh dear, this game keeps tripping. What shall we change?', autoListen); return; } if (cur.fixed) { caption('Pip is tidying up…'); launch(cur).catch(() => {}); return; }
+let lastError = ''; const fails = [];
+function report(stage, error, code) { try { api('log', { stage, error: String(error).slice(0, 400), code: String(code).slice(0, 6000), ua: navigator.userAgent.slice(0, 160) }).catch(() => {}); } catch (e) {} }
+function crash(msg) { if (!cur || busy) return; lastError = msg; report('crash', msg, cur.code); live = false; cur.crashes = (cur.crashes || 0) + 1; if (cur.crashes > 2) { M.change = true; post({ type: 'pause', on: true }); show('talk'); say('Oh dear, this game keeps tripping. What shall we change?', autoListen); return; } if (cur.fixed) { caption('Pip is tidying up…'); launch(cur).catch(() => {}); return; }
   doBuild({ say: 'Oops, a little hiccup. I will fix it!', brief: cur.brief, name: cur.name, music: cur.music, fresh: false, error: msg }); }
 async function openSaved(x) { audio(); hush(); closeGame(); convo = []; turns = 0; M.change = false; show('build'); $('buildSay').textContent = `Opening ${x.name}…`; setProg(0.6);
   try { await launch(x); cur = { ...x, fixed: false }; show('play'); $('hudName').textContent = x.name; sfx.magic(); caption(x.how); say(x.how); const ab = await idbGet(x.id); if (ab && cur && cur.id === x.id) playMusic(ab); }
@@ -630,7 +640,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { hus
 let last = performance.now();
 function loop(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt; if (M.mode !== 'play' && M.mode !== 'gate') drawPip(); requestAnimationFrame(loop); }
 show(PASSC ? 'home' : 'gate'); renderShelf(); requestAnimationFrame(loop);
-window.__genie = { M, S, onHeard, startMake, openChange, openGrown, goHome, doBuild, state: () => ({ mode: M.mode, busy, speaking, mic: micState, cur: cur && { name: cur.name, icon: cur.icon, how: cur.how, uses: cur.uses, len: cur.code.length }, live, lastError, convo }) };
+window.__genie = { fails, _launch: launch, M, S, onHeard, startMake, openChange, openGrown, goHome, doBuild, state: () => ({ mode: M.mode, busy, speaking, mic: micState, cur: cur && { name: cur.name, icon: cur.icon, how: cur.how, uses: cur.uses, len: cur.code.length }, live, lastError, convo }) };
 
 </script>
 </body>

@@ -92,7 +92,7 @@ RULES
 - Plain JavaScript, no imports, about 80 to 220 lines. Declare your state with let/const at the top of the code.
 
 PARTS (a growing library of reusable helpers)
-If you write a helper that would be useful in other games (for example flyTo, wobble, drawRainbow, bounceOff, spawnRing), put it in a <part> instead of in <code>. A part is one self-contained function that only uses its arguments, ctx, W, H and kit. Parts are loaded before your code. You may also receive existing library parts: reuse them when they fit by listing their names in <use>; do not redefine them.
+If you write a helper that would be useful in other games (for example flyTo, wobble, drawRainbow, bounceOff, spawnRing), put it in a <part> instead of in <code>. A part is one self-contained function that only uses its arguments, ctx, W, H and kit. Parts are loaded before your code. You may also receive existing library parts: reuse them when they fit by listing their names in <use>; do not redefine them. Never declare a variable or function in <code> with the same name as a part, and never redeclare W, H, ctx or kit.
 
 When you are given previous code and a change request or an error, return the complete updated game in the same format.`;
 
@@ -107,6 +107,8 @@ Deno.serve(async (req: Request) => {
   const op = new URL(req.url).searchParams.get('op') ?? '';
   try {
     if (op === 'ping') return json({ ok: true, voice: !!EL, brain: !!AK });
+
+    if (op === 'log') { const b = await req.json(); console.log('MAKERLOG ' + JSON.stringify({ stage: clip(b.stage, 20), error: clip(b.error, 400), ua: clip(b.ua, 160), code: clip(b.code, 6000) })); return json({ ok: true }); }
 
     if (op === 'models') { const r = await fetch('https://api.anthropic.com/v1/models?limit=100', { headers: { 'x-api-key': AK, 'anthropic-version': '2023-06-01' } }); const j = await r.json(); return json({ talk: TALK_MODEL, build: BUILD_MODEL, models: (j.data ?? []).map((m: { id: string }) => m.id), err: j.error }); }
 
