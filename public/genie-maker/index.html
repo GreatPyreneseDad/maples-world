@@ -139,7 +139,6 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
     <label><input type="checkbox" id="optMusic">Music</label>
     <label><input type="checkbox" id="optSound">Game sounds</label>
     <label><input type="checkbox" id="optAuto">Pip listens by herself after she speaks</label>
-    <label><input type="checkbox" id="optCareful">Careful builder (slower, about a minute; off = fast, about 15 seconds)</label>
     <h3>This game</h3>
     <pre id="gInfo">No game open.</pre>
     <h3>The code Pip wrote</h3>
@@ -554,7 +553,7 @@ async function doBuild(req) { busy = true; const prev = cur, isNew = !prev || re
   show('build'); setProg(0.03); $('buildSay').textContent = req.say; say(req.say); let fi = 0;
   const filler = setInterval(() => { if (!speaking && M.mode === 'build') { const t = FILL[fi++ % FILL.length]; $('buildSay').textContent = t; say(t); } }, 11000);
   let musicP = null; if (isNew) { stopMusic(); if (S.music) musicP = fetchMusic(req.music).catch(() => null); }
-  const body = { model: S.careful ? 'claude-sonnet-5-5' : 'claude-haiku-5-5', name: req.name || (prev && prev.name) || '', brief: req.brief, parts: S.parts, prev_code: !isNew && prev ? prev.code : (req.prevCode || undefined), error: req.error };
+  const body = { model: 'claude-sonnet-5-5', name: req.name || (prev && prev.name) || '', brief: req.brief, parts: S.parts, prev_code: !isNew && prev ? prev.code : (req.prevCode || undefined), error: req.error };
   try { let res = null, gm = null, lastErr = null; const rq = { ...req, name: body.name };
     for (let attempt = 0; attempt < 3; attempt++) { let b2 = body;
       if (attempt === 1) b2 = { ...body, model: 'claude-sonnet-5-5', prev_code: res ? res.code : body.prev_code, error: lastErr };
@@ -598,7 +597,7 @@ function drawPip() { g.setTransform(DPR, 0, 0, DPR, 0, 0); const gr = g.createLi
 /* ---------- home shelf + grown-up panel ---------- */
 function renderShelf() { const sh = $('shelf'); sh.innerHTML = ''; $('shelfT').hidden = !S.games.length;
   for (const x of S.games) { const b = document.createElement('button'); b.className = 'tile'; const e = document.createElement('div'); e.className = 'emo'; e.textContent = x.icon || '🎮'; const s = document.createElement('span'); s.textContent = x.name; b.append(e, s); b.onclick = () => openSaved(x); sh.appendChild(b); } }
-function renderGrown() { for (const [id, k] of [['optVoice', 'voice'], ['optMusic', 'music'], ['optSound', 'sound'], ['optAuto', 'auto'], ['optCareful', 'careful']]) $(id).checked = S[k];
+function renderGrown() { for (const [id, k] of [['optVoice', 'voice'], ['optMusic', 'music'], ['optSound', 'sound'], ['optAuto', 'auto']]) $(id).checked = S[k];
   const x = cur || lastGame; $('gInfo').textContent = x ? `${x.icon} ${x.name}\n\nWhat the child asked for (Pip's brief):\n${x.brief}\n\nMusic: ${x.music || '—'}\nParts used: ${(x.uses || []).join(', ') || 'none'}${lastError ? '\n\nLast error: ' + lastError : ''}` : 'No game open. Open one, then come back here from the home screen.';
   $('gCode').textContent = x ? (x.pre ? '// ---- parts ----\n' + x.pre + '\n\n// ---- game ----\n' : '') + x.code : '—';
   const pl = $('partList'); pl.innerHTML = ''; if (!S.parts.length) pl.textContent = 'Empty so far.'; else { const ul = document.createElement('ul'); for (const p of S.parts) { const li = document.createElement('li'); li.textContent = `${p.name}: ${p.about}`; ul.appendChild(li); } pl.appendChild(ul); }
@@ -608,7 +607,7 @@ function renderGrown() { for (const [id, k] of [['optVoice', 'voice'], ['optMusi
 let lastGame = null, lastTalk = [];
 function openGrown() { hush(); renderGrown(); $('grown').hidden = false; }
 $('grownClose').onclick = () => { $('grown').hidden = true; };
-for (const [id, k] of [['optVoice', 'voice'], ['optMusic', 'music'], ['optSound', 'sound'], ['optAuto', 'auto'], ['optCareful', 'careful']]) $(id).onchange = e => { S[k] = e.target.checked; save(); if (k === 'music' && !S.music) stopMusic(); if (k === 'voice' && !S.voice) stopVoice(); };
+for (const [id, k] of [['optVoice', 'voice'], ['optMusic', 'music'], ['optSound', 'sound'], ['optAuto', 'auto']]) $(id).onchange = e => { S[k] = e.target.checked; save(); if (k === 'music' && !S.music) stopMusic(); if (k === 'voice' && !S.voice) stopVoice(); };
 $('partClear').onclick = () => { S.parts = []; save(); renderGrown(); };
 $('forget').onclick = () => { PASSC = ''; try { localStorage.removeItem(PKEY); } catch (e) {} $('grown').hidden = true; show('gate'); };
 let gearT = 0; const gear = $('gear');
