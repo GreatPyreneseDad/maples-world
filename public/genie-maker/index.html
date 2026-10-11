@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="robots" content="noindex, nofollow">
-<title>Genie Game Maker (test build)</title>
+<title>Genie Game Maker · Maple's World</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
@@ -87,8 +87,8 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
 
 <div id="gate" class="layer" hidden>
   <h1>Genie Game Maker</h1>
-  <div class="tag">test build &middot; not public</div>
-  <p>Grown-up: type the test passcode once. It is remembered on this device.</p>
+  <div class="tag">make a game by talking to Pip</div>
+  <p>Grown-ups: making games needs a passcode. Type it once and it is remembered on this device. Without one, you can still play the <a href="/wished/" style="color:#ffe38a">Wished Games</a>.</p>
   <input id="gateIn" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="passcode">
   <button id="gateGo" class="big">Open</button>
   <p id="gateMsg"></p>
@@ -96,7 +96,7 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
 
 <div id="home" class="layer" hidden>
   <h1>Genie Game Maker</h1>
-  <div class="tag">test build &middot; not public</div>
+  <div class="tag">make a game by talking to Pip</div>
   <div class="grow"></div>
   <button id="make" class="big">✨ Make a game</button>
   <div id="shelfT" hidden>Games you made</div>
@@ -134,7 +134,7 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
 <div id="grown" class="layer" hidden>
   <div class="card">
     <h2>Grown-ups</h2>
-    <div>Test build. When the child talks, the recording goes to ElevenLabs to be turned into words, and the words go to Anthropic's Claude, which runs the conversation and writes the game. Both go through our own server, which stores nothing. Saved games stay on this device.</div>
+    <div>When the child talks, the recording goes to ElevenLabs to be turned into words, and the words go to Anthropic's Claude, which runs the conversation and writes the game. Both go through our own server, which stores nothing. Saved games stay on this device.</div>
     <label><input type="checkbox" id="optVoice">Pip talks out loud</label>
     <label><input type="checkbox" id="optMusic">Music</label>
     <label><input type="checkbox" id="optSound">Game sounds</label>
@@ -518,7 +518,7 @@ function resume(text) { hush(); M.change = false; show('play'); post({ type: 'pa
 /* ---------- building: Claude writes the game, we seal it in a frame ---------- */
 const FILL = ['Stirring in the sparkles!', 'Adding a pinch of giggles!', 'Mixing, mixing, mixing!', 'Sprinkling the stardust!', 'Almost ready!', 'Just a little more magic!'];
 function setProg(p) { $('bar').firstElementChild.style.width = Math.round(clamp(p, 0, 1) * 100) + '%'; }
-async function streamBuild(body) { const r = await api('build', body); if (!r.ok || !r.body) { let m = 'build failed'; try { m = (await r.json()).error || m; } catch (e) {} throw new Error(m); }
+async function streamBuild(body) { const r = await api('build', body); if (r.status === 429) throw new Error('cap'); if (!r.ok || !r.body) { let m = 'build failed'; try { m = (await r.json()).error || m; } catch (e) {} throw new Error(m); }
   const rd = r.body.getReader(), dec = new TextDecoder(); let txt = ''; for (;;) { const { done, value } = await rd.read(); if (done) break; txt += dec.decode(value, { stream: true }); setProg(0.05 + 0.9 * Math.min(1, txt.length / 7000)); }
   const tag = n => { const m = txt.match(new RegExp(`<${n}>([\\s\\S]*?)</${n}>`)); return m ? m[1].trim() : ''; };
   const err = tag('error'); if (err) throw new Error(err);
@@ -561,12 +561,14 @@ async function doBuild(req) { busy = true; const prev = cur, isNew = !prev || re
       if (attempt === 2) b2 = { ...body, model: 'claude-sonnet-5-5', error: undefined };
       if (attempt) { $('buildSay').textContent = 'Fixing a little hiccup…'; setProg(0.05); }
       try { res = await streamBuild(b2); gm = assemble(res, rq, id); await launch(gm); lastErr = null; break; }
-      catch (err) { if (err.message === 'passcode') throw err; lastErr = String(err.message); fails.push({ stage: 'try' + attempt, error: lastErr, code: gm && gm.code }); report('try' + attempt, lastErr, res ? res.code : ''); gm = null; } }
+      catch (err) { if (err.message === 'passcode' || err.message === 'cap') throw err; lastErr = String(err.message); fails.push({ stage: 'try' + attempt, error: lastErr, code: gm && gm.code }); report('try' + attempt, lastErr, res ? res.code : ''); gm = null; } }
     if (!gm) throw new Error(lastErr || 'build failed');
     clearInterval(filler); if (!isNew && prev) gm.music = prev.music; cur = gm; cur.fixed = !!req.error; const i = S.games.findIndex(x => x.id === id); const sv = { id, name: gm.name, icon: gm.icon, brief: gm.brief, how: gm.how, music: gm.music, pre: gm.pre, code: gm.code, uses: gm.uses, pub: i >= 0 ? S.games[i].pub : undefined, pubStale: i >= 0 && !!S.games[i].pub }; if (i >= 0) S.games[i] = sv; else { S.games.unshift(sv); for (const x of S.games.splice(8)) idbDel(x.id); } save();
     if (musicP) musicP.then(ab => { if (ab) { idbPut(id, ab); if (cur && cur.id === id) playMusic(ab); } });
     busy = false; M.change = false; hush(); sfx.magic(); show('play'); $('hudName').textContent = gm.name; caption(gm.how); say(gm.how);
-  } catch (e) { clearInterval(filler); busy = false; if (e.message === 'passcode') return; lastError = String(e.message); fails.push({ stage: 'final', error: lastError }); report('final', lastError, '');
+  } catch (e) { clearInterval(filler); busy = false; if (e.message === 'passcode') return;
+    if (e.message === 'cap') { const t = 'I am all out of magic for today. Come back tomorrow for more!'; if (prev) { cur = prev; try { await launch(prev); } catch (e2) {} resume(t); } else { closeGame(); show('home'); renderShelf(); caption(t); say(t); } return; }
+    lastError = String(e.message); fails.push({ stage: 'final', error: lastError }); report('final', lastError, '');
     if (prev && !isNew) { cur = prev; try { await launch(prev); } catch (e2) {} show('talk'); M.change = true; show('talk'); say('Oh no, my magic fizzled. Shall we try a different change?', autoListen); }
     else { closeGame(); show('talk'); say('Oh no, my magic fizzled. Tell me again, what game shall we make?', autoListen); } } }
 let lastError = ''; const fails = [];

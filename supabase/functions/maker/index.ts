@@ -11,6 +11,7 @@ const TALK_MODEL = Deno.env.get('MAKER_TALK_MODEL') ?? 'claude-haiku-5-5';
 const BUILD_MODEL = Deno.env.get('MAKER_BUILD_MODEL') ?? 'claude-sonnet-5-5';
 
 const SB_URL = Deno.env.get('SUPABASE_URL') ?? '', SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const NEW_CAP = Number(Deno.env.get('MAKER_NEW_GAMES_PER_DAY') ?? 40), BUILD_CAP = Number(Deno.env.get('MAKER_BUILDS_PER_DAY') ?? 400);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const db = (path: string, init: RequestInit = {}) => fetch(`${SB_URL}/rest/v1/${path}`, { ...init, headers: { apikey: SB_KEY, authorization: `Bearer ${SB_KEY}`, 'content-type': 'application/json', ...(init.headers ?? {}) } });
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type, x-maker-pass', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Max-Age': '86400' };
@@ -170,6 +171,7 @@ Deno.serve(async (req: Request) => {
 
     if (op === 'build') {
       const b = await req.json(); const brief = clip(b.brief, 3000); if (!brief) return json({ error: 'no brief' }, 400);
+      if (!b.error) { const cap = await db('rpc/maker_bump', { method: 'POST', body: JSON.stringify({ is_new: !b.prev_code, new_cap: NEW_CAP, build_cap: BUILD_CAP }) }); if (cap.ok && (await cap.json()) === false) return json({ error: 'cap' }, 429); }
       let user = `GAME NAME: ${clip(b.name, 60)}\n\nBRIEF FROM THE CHILD (via Pip):\n${brief}`;
       const parts = (Array.isArray(b.parts) ? b.parts : []).slice(0, 30).map((p: { name: string; about: string; code: string }) => `// ${clip(p.name, 40)}: ${clip(p.about, 160)}\n${clip(p.code, 1500)}`).join('\n\n');
       if (parts) user += `\n\nLIBRARY PARTS AVAILABLE (list the ones you use in <use>):\n${clip(parts, 14000)}`;
