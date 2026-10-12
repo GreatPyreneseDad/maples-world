@@ -2,6 +2,7 @@
 // Keeps the ElevenLabs and Anthropic keys off the browser. Every call needs the test passcode.
 // Nothing is stored here: audio and words pass through to ElevenLabs / Anthropic and back.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { CONTRACT_PROMPT, VERSION as ENGINE_VERSION } from './pip-engine.mjs';
 
 const EL = Deno.env.get('ELEVENLABS_API_KEY') ?? '';
 const AK = Deno.env.get('ANTHROPIC_API_KEY') ?? Deno.env.get('maples-world-api-key') ?? Deno.env.get('MAPLES_WORLD_API_KEY') ?? '';
@@ -58,28 +59,7 @@ OUTPUT FORMAT (exactly these tags, nothing else outside them):
 ...JavaScript...
 </code>
 
-YOUR CODE must define exactly:  const game = { init() {}, update(dt) {}, draw() {} };
-init runs once. Every frame update(dt) then draw() run (dt in seconds, at most 0.05). Draw the whole screen every frame.
-
-GLOBALS YOU CAN USE
-W, H            canvas size in CSS pixels. Read them every frame; they change when the device rotates. Phones are tall (about 390x800), laptops wide.
-ctx             CanvasRenderingContext2D for free drawing.
-kit.t           seconds since the game started
-kit.pointer     { x, y, down, pressed, released }   finger or mouse. pressed/released are true for one frame.
-kit.bg(topColor, bottomColor)                 fill the background with a vertical gradient
-kit.sprite(kind, x, y, size, opts)            cute built-in character, FEET at (x, y), size = height in pixels. opts: { flip: bool, t: animation seconds (pass kit.t to animate walking/flapping, 0 to stand), rot: radians, alpha }
-    kinds: girl boy robot unicorn dino kitten cat puppy bunny chick pig sheep fox owl hedgehog frog turtle duck penguin bear bat mouse butterfly ladybug crab firefly ghost cloud snowball
-kit.item(kind, x, y, size, opts)              CENTERED at (x, y). kinds: star apple gem fish flower cupcake heart coin
-kit.prop(kind, x, y, size)                    scenery, BASE at (x, y). kinds: tree pine bush flower rock palm shell snowman mushroom crystal lollipop cane
-kit.emoji(char, x, y, size, opts)             any emoji CENTERED at (x, y). Use for everything not built in (pancake, moon, rocket, dragon, pizza, truck...). opts: { rot, alpha, flip }
-kit.text(str, x, y, size, color, align)       bold rounded text. Use only for numbers or one or two words. The child cannot read.
-kit.sound(name)                               pop join bonk win tap magic boing whoosh splash munch
-kit.note(freq, seconds)                       a single musical tone
-kit.puff(x, y, colors, n)                     sparkle burst. kit animates and draws its particles on top by itself.
-kit.shake(amount)                             brief screen shake, amount about 4 to 12
-kit.say(text)                                 Pip says up to 10 words aloud. Use rarely: at big moments only, never every frame.
-kit.win()                                     call ONCE when the child finishes a round: confetti and fanfare. Then start a new, slightly different round yourself about 3 seconds later.
-kit.rand(a, b)  kit.pick(array)  kit.clamp(v, a, b)  kit.dist(x1, y1, x2, y2)  kit.lerp(a, b, k)
+${CONTRACT_PROMPT}
 
 RULES
 - Touch first. The whole game must be playable with one finger: tap and/or drag. No keyboard needed. Tapping anywhere should always do something visible or audible.
@@ -111,12 +91,12 @@ Deno.serve(async (req: Request) => {
   try {
     // ---- public: the Wished Games shelf (no passcode, read only) ----
     if (op === 'list') { const r = await db('wished_games?select=id,name,icon,how,created_at&hidden=eq.false&order=created_at.desc&limit=200'); return json({ games: r.ok ? await r.json() : [] }); }
-    if (op === 'get') { const { id } = await req.json(); if (!UUID.test(String(id))) return json({ error: 'bad id' }, 400); const r = await db(`wished_games?select=id,name,icon,how,pre,code,music_url&hidden=eq.false&id=eq.${id}`); const rows = r.ok ? await r.json() : []; return rows[0] ? json(rows[0]) : json({ error: 'not found' }, 404); }
+    if (op === 'get') { const { id } = await req.json(); if (!UUID.test(String(id))) return json({ error: 'bad id' }, 400); const r = await db(`wished_games?select=id,name,icon,how,pre,code,music_url,engine_version&hidden=eq.false&id=eq.${id}`); const rows = r.ok ? await r.json() : []; return rows[0] ? json(rows[0]) : json({ error: 'not found' }, 404); }
   } catch (e) { return json({ error: clip((e as Error)?.message, 200) }, 500); }
   if (!PASS || req.headers.get('x-maker-pass') !== PASS) { await new Promise(r => setTimeout(r, 600)); return json({ error: 'passcode' }, 401); }
   try {
     // ---- grown-up only: publish / unpublish ----
-    if (op === 'publish') { const b = await req.json(); const row = { name: clip(b.name, 60).trim() || 'A Wished Game', icon: clip(b.icon, 16) || '🎮', how: clip(b.how, 200), pre: clip(b.pre, 40000), code: clip(b.code, 60000), updated_at: new Date().toISOString() };
+    if (op === 'publish') { const b = await req.json(); const row = { name: clip(b.name, 60).trim() || 'A Wished Game', icon: clip(b.icon, 16) || '🎮', how: clip(b.how, 200), pre: clip(b.pre, 40000), code: clip(b.code, 60000), engine_version: clip(b.engine, 20) || ENGINE_VERSION, updated_at: new Date().toISOString() };
       if (row.code.length < 20) return json({ error: 'no code' }, 400);
       if (UUID.test(String(b.id))) { const r = await db(`wished_games?id=eq.${b.id}`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify(row) }); const rows = r.ok ? await r.json() : []; if (rows[0]) return json({ id: rows[0].id }); }
       const c = await db('wished_games?select=id', { method: 'HEAD', headers: { prefer: 'count=exact' } }); if (Number((c.headers.get('content-range') ?? '').split('/')[1] ?? 0) >= 300) return json({ error: 'The shelf is full (300 games).' }, 409);
@@ -126,7 +106,7 @@ Deno.serve(async (req: Request) => {
       const music_url = `${SB_URL}/storage/v1/object/public/wished-music/${id}.mp3?v=${Date.now()}`; await db(`wished_games?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ music_url }) }); return json({ music_url }); }
     if (op === 'unpublish') { const { id } = await req.json(); if (!UUID.test(String(id))) return json({ error: 'bad id' }, 400); await db(`wished_games?id=eq.${id}`, { method: 'DELETE' }); await fetch(`${SB_URL}/storage/v1/object/wished-music/${id}.mp3`, { method: 'DELETE', headers: { authorization: `Bearer ${SB_KEY}`, apikey: SB_KEY } }); return json({ ok: true }); }
 
-    if (op === 'ping') return json({ ok: true, voice: !!EL, brain: !!AK });
+    if (op === 'ping') return json({ ok: true, voice: !!EL, brain: !!AK, engine: ENGINE_VERSION });
 
     if (op === 'log') { const b = await req.json(); console.log('MAKERLOG ' + JSON.stringify({ stage: clip(b.stage, 20), error: clip(b.error, 400), ua: clip(b.ua, 160), code: clip(b.code, 6000) })); return json({ ok: true }); }
 
