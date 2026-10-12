@@ -73,6 +73,7 @@ RULES
 - Movement uses dt. Keep arrays small (remove old objects). Never use unbounded loops.
 - No DOM, no document or window access, no network, no storage, no timers (use kit.t and dt), no alert. No images or audio other than kit.
 - Never throw. Check that things exist before using them.
+- Declare your state and helper functions first, then define const game = { init() {}, update(dt) {}, draw() {} } as one object literal. Never mention game on any line above that definition, and never assign to game.something outside it.
 - Plain JavaScript, no imports, about 80 to 220 lines, never more than 320. When changing an existing game, keep it compact: rewrite and simplify rather than only adding, and drop anything the change makes unnecessary. Declare your state with let/const at the top of the code.
 
 PARTS (a growing library of reusable helpers)
