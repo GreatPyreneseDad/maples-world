@@ -27,6 +27,7 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
 .tile{flex:none;width:104px;background:#fff;border-radius:22px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;font-weight:800;font-size:13px;line-height:1.1;box-shadow:0 5px 0 #c9b7f5}
 .tile .emo{font-size:46px;height:62px;line-height:62px}
 .rnd{width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.92);font-size:25px;box-shadow:0 4px 0 rgba(0,0,0,.2);padding:0}
+#home h1{margin-top:48px}
 #gear{position:fixed;right:10px;top:calc(10px + env(safe-area-inset-top));background:rgba(255,255,255,.16);color:#fff;box-shadow:none}
 #gearHint{position:fixed;right:70px;top:calc(24px + env(safe-area-inset-top));color:#e6dcff;font-size:13px;font-weight:700;opacity:0;transition:opacity .2s}
 #gearHint.on{opacity:1}
@@ -93,6 +94,7 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
   <button id="make" class="big">✨ Make a game</button>
   <div id="shelfT" hidden>Games you made</div>
   <div id="shelf"></div>
+  <a id="siteBack" href="/" style="position:fixed;left:10px;top:calc(10px + env(safe-area-inset-top));background:rgba(255,255,255,.16);color:#fff;font-weight:700;text-decoration:none;border-radius:16px;padding:8px 14px;font-size:15px">← Maple's World</a>
   <button id="gear" class="rnd" aria-label="Grown-ups: press and hold">⚙</button>
   <div id="gearHint">Grown-ups: press and hold</div>
 </div>
@@ -127,7 +129,7 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
 <div id="grown" class="layer" hidden>
   <div class="card">
     <h2>Grown-ups</h2>
-    <div>Anyone can make games here; no sign-in. When the child talks, the recording goes to ElevenLabs to be turned into words, and the words go to Anthropic's Claude, which runs the conversation and writes the game. Both go through our own server, which stores nothing. Saved games stay on this device.</div>
+    <div>Anyone can make games here; no sign-in. When the child talks, the recording goes to ElevenLabs to be turned into words, and the words go to Anthropic's Claude, which runs the conversation and writes the game. Both go through our own server, which stores nothing. Saved games stay on this device. <a href="/privacy/" style="color:#6a3fd0">Full privacy page</a>.</div>
     <label><input type="checkbox" id="optVoice">Pip talks out loud</label>
     <label><input type="checkbox" id="optMusic">Music</label>
     <label><input type="checkbox" id="optSound">Game sounds</label>
