@@ -85,18 +85,10 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
 <canvas id="stage"></canvas>
 <iframe id="frame" hidden sandbox="allow-scripts" title="Your game"></iframe>
 
-<div id="gate" class="layer" hidden>
-  <h1>Genie Game Maker</h1>
-  <div class="tag">make a game by talking to Pip</div>
-  <p>Grown-ups: making games needs a passcode. Type it once and it is remembered on this device. Without one, you can still play the <a href="/wished/" style="color:#ffe38a">Wished Games</a>.</p>
-  <input id="gateIn" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="passcode">
-  <button id="gateGo" class="big">Open</button>
-  <p id="gateMsg"></p>
-</div>
-
 <div id="home" class="layer" hidden>
   <h1>Genie Game Maker</h1>
   <div class="tag">make a game by talking to Pip</div>
+  <div style="color:#e6dcff;font-size:13px;font-weight:700;margin-top:8px;text-align:center;max-width:320px">Pip hears you through the microphone. Grown-ups: hold ⚙ to see how it works.</div>
   <div class="grow"></div>
   <button id="make" class="big">✨ Make a game</button>
   <div id="shelfT" hidden>Games you made</div>
@@ -135,7 +127,7 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
 <div id="grown" class="layer" hidden>
   <div class="card">
     <h2>Grown-ups</h2>
-    <div>When the child talks, the recording goes to ElevenLabs to be turned into words, and the words go to Anthropic's Claude, which runs the conversation and writes the game. Both go through our own server, which stores nothing. Saved games stay on this device.</div>
+    <div>Anyone can make games here; no sign-in. When the child talks, the recording goes to ElevenLabs to be turned into words, and the words go to Anthropic's Claude, which runs the conversation and writes the game. Both go through our own server, which stores nothing. Saved games stay on this device.</div>
     <label><input type="checkbox" id="optVoice">Pip talks out loud</label>
     <label><input type="checkbox" id="optMusic">Music</label>
     <label><input type="checkbox" id="optSound">Game sounds</label>
@@ -152,6 +144,9 @@ h1{margin:0;font-size:clamp(30px,7vw,52px);font-weight:800;color:#fff;text-shado
     <h3>Saved games</h3>
     <div style="font-size:13px;color:#6b6480">Publishing puts a game on the public Wished Games shelf at maplesworld.org/wished/, where anyone can play it. Only the name, icon, game code and music are stored. Editing a game here does not change the published copy until you press Update.</div>
     <div id="savedList"></div>
+    <h3>Grown-up passcode (only needed to publish)</h3>
+    <div id="passRow" style="display:flex;gap:8px" hidden><input type="text" id="passIn" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="passcode"><button class="btn go" id="passGo">Save</button></div>
+    <div id="passMsg" style="font-size:13px;color:#6b6480;min-height:18px"></div>
     <div style="margin-top:14px"><button class="btn go" id="grownClose">Done</button> <button class="btn" id="forget">Forget passcode</button></div>
   </div>
 </div>
@@ -188,7 +183,7 @@ async function idbGet(k) { try { const d = await idb(); return await new Promise
 async function idbDel(k) { try { const d = await idb(); d.transaction('music', 'readwrite').objectStore('music').delete(k); } catch (e) {} }
 
 async function api(op, body, blob, signal) { const r = await fetch(`${API}?op=${op}`, { method: 'POST', signal, headers: { 'x-maker-pass': PASSC, 'content-type': blob ? (blob.type || 'audio/webm') : 'application/json' }, body: blob || JSON.stringify(body || {}) });
-  if (r.status === 401) { PASSC = ''; try { localStorage.removeItem(PKEY); } catch (e) {} hush(); show('gate'); throw new Error('passcode'); } return r; }
+  if (r.status === 401) throw new Error('passcode'); return r; }
 
 /* ---------- sound: one AudioContext for effects, Pip's voice and music ---------- */
 let AC = null, vGain = null, mGain = null, vSrc = null, mSrc = null, ducked = false;
@@ -237,19 +232,19 @@ async function listen() { if (rec || speaking || busy || !(M.mode === 'talk')) r
 const autoListen = () => { if (S.auto) listen(); };
 
 /* ---------- the conversation ---------- */
-var M = { mode: 'gate', change: false };
+var M = { mode: 'home', change: false };
 let convo = [], cur = null, busy = false, turns = 0;
-function show(mode) { M.mode = mode; for (const id of ['gate', 'home', 'talk', 'build']) $(id).hidden = id !== mode; $('hud').hidden = mode !== 'play'; frame.classList.toggle('off', mode !== 'play'); if (mode !== 'play') $('cap').style.opacity = 0;
+function show(mode) { M.mode = mode; for (const id of ['home', 'talk', 'build']) $(id).hidden = id !== mode; $('hud').hidden = mode !== 'play'; frame.classList.toggle('off', mode !== 'play'); if (mode !== 'play') $('cap').style.opacity = 0;
   $('now').hidden = !(mode === 'talk' && (M.change || turns > 0)); $('now').textContent = M.change ? '▶️' : '🪄'; }
 let capT = 0; function caption(t) { const c = $('cap'); c.textContent = t; c.style.opacity = 1; clearTimeout(capT); capT = setTimeout(() => c.style.opacity = 0, 2500 + t.length * 60); }
 function startMake() { audio(); sfx.magic(); closeGame(); convo = []; turns = 0; M.change = false; $('heard').textContent = ''; show('talk'); const hi = 'Hi! I am Pip, the wish unicorn. What game shall we make today?'; convo.push({ role: 'assistant', content: hi }); say(hi, autoListen); }
 async function onHeard(text, quiet) { if (busy) return; busy = true; hush(); if (!quiet) $('heard').textContent = `You said: “${text}”`; convo.push({ role: 'user', content: text }); turns++; setMic('think');
-  try { const r = await api('talk', { messages: convo, game: cur ? { name: cur.name, brief: cur.brief } : null }); const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || 'talk');
+  try { const r = await api('talk', { messages: convo, game: cur ? { name: cur.name, brief: cur.brief } : null }); if (r.status === 429) throw new Error('cap'); const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || 'talk');
     convo.push({ role: 'assistant', content: j.say }); busy = false; show(M.mode);
     if (j.action === 'build' && j.brief) return doBuild({ say: j.say, brief: j.brief, name: j.game_name, music: j.music, fresh: !M.change });
     if (j.action === 'play' && cur) return resume(j.say);
     say(j.say, autoListen);
-  } catch (e) { busy = false; if (e.message !== 'passcode') say('Oops, my magic hiccuped. Can you say that again?', autoListen); } }
+  } catch (e) { busy = false; if (e.message === 'cap') { const t = 'I am all out of magic for today. Come back tomorrow for more!'; if (cur) resume(t); else { closeGame(); show('home'); renderShelf(); caption(t); say(t); } return; } say('Oops, my magic hiccuped. Can you say that again?', autoListen); } }
 function openChange() { if (!cur) return; audio(); sfx.magic(); post({ type: 'pause', on: true }); M.change = true; $('heard').textContent = ''; show('talk'); const q = 'What shall we change?'; convo.push({ role: 'assistant', content: q }); say(q, autoListen); }
 function resume(text) { hush(); M.change = false; show('play'); post({ type: 'pause', on: false }); if (text) { caption(text); say(text); } }
 
@@ -338,7 +333,7 @@ function drawPip() { g.setTransform(DPR, 0, 0, DPR, 0, 0); const gr = g.createLi
 /* ---------- home shelf + grown-up panel ---------- */
 function renderShelf() { const sh = $('shelf'); sh.innerHTML = ''; $('shelfT').hidden = !S.games.length;
   for (const x of S.games) { const b = document.createElement('button'); b.className = 'tile'; const e = document.createElement('div'); e.className = 'emo'; e.textContent = x.icon || '🎮'; const s = document.createElement('span'); s.textContent = x.name; b.append(e, s); b.onclick = () => openSaved(x); sh.appendChild(b); } }
-function renderGrown() { for (const [id, k] of [['optVoice', 'voice'], ['optMusic', 'music'], ['optSound', 'sound'], ['optAuto', 'auto']]) $(id).checked = S[k];
+function renderGrown() { $('forget').hidden = !PASSC; $('passRow').hidden = !!PASSC; for (const [id, k] of [['optVoice', 'voice'], ['optMusic', 'music'], ['optSound', 'sound'], ['optAuto', 'auto']]) $(id).checked = S[k];
   const x = cur || lastGame; $('gInfo').textContent = x ? `${x.icon} ${x.name}\n\nWhat the child asked for (Pip's brief):\n${x.brief}\n\nMusic: ${x.music || '—'}\nParts used: ${(x.uses || []).join(', ') || 'none'}${lastError ? '\n\nLast error: ' + lastError : ''}` : 'No game open. Open one, then come back here from the home screen.';
   $('gCode').textContent = x ? (x.pre ? '// ---- parts ----\n' + x.pre + '\n\n// ---- game ----\n' : '') + x.code : '—';
   const pl = $('partList'); pl.innerHTML = ''; if (!S.parts.length) pl.textContent = 'Empty so far.'; else { const ul = document.createElement('ul'); for (const p of S.parts) { const li = document.createElement('li'); li.textContent = `${p.name}: ${p.about}`; ul.appendChild(li); } pl.appendChild(ul); }
@@ -350,23 +345,23 @@ function renderGrown() { for (const [id, k] of [['optVoice', 'voice'], ['optMusi
     if (y.pub) mk('Unpublish', async e => { e.target.textContent = 'Removing…'; try { await api('unpublish', { id: y.pub }); y.pub = undefined; y.pubStale = false; save(); } catch (err) {} renderGrown(); });
     mk('Delete', () => { if (y.pub && !confirm('This deletes it from this device only. It stays on Wished Games until you unpublish it. Delete?')) return; S.games = S.games.filter(z => z !== y); idbDel(y.id); save(); renderGrown(); renderShelf(); });
     sl.appendChild(d); } }
-async function publish(y, btn) { btn.textContent = 'Publishing…'; btn.disabled = true;
+async function publish(y, btn) { if (!PASSC) { $('passRow').hidden = false; $('passIn').focus(); $('passMsg').textContent = 'Publishing needs the grown-up passcode.'; return; } btn.textContent = 'Publishing…'; btn.disabled = true;
   try { const r = await api('publish', { id: y.pub, name: y.name, icon: y.icon, how: y.how, pre: y.pre, code: y.code, engine: y.engine || PIP_ENGINE.VERSION }); const j = await r.json(); if (!r.ok || !j.id) throw new Error(j.error || 'publish failed');
     y.pub = j.id; y.pubStale = false; save(); const ab = await idbGet(y.id); if (ab) { try { await api('pubmusic&id=' + j.id, null, new Blob([ab], { type: 'audio/mpeg' })); } catch (e) {} }
-    renderGrown(); } catch (e) { btn.disabled = false; btn.textContent = 'Could not publish: ' + String(e.message).slice(0, 60); } }
+    renderGrown(); } catch (e) { btn.disabled = false; if (e.message === 'passcode') { PASSC = ''; try { localStorage.removeItem(PKEY); } catch (e2) {} $('passRow').hidden = false; $('passMsg').textContent = 'That passcode did not work.'; btn.textContent = 'Publish to Wished Games'; } else btn.textContent = 'Could not publish: ' + String(e.message).slice(0, 60); } }
 let lastGame = null, lastTalk = [];
 function openGrown() { hush(); renderGrown(); $('grown').hidden = false; }
 $('grownClose').onclick = () => { $('grown').hidden = true; };
 for (const [id, k] of [['optVoice', 'voice'], ['optMusic', 'music'], ['optSound', 'sound'], ['optAuto', 'auto']]) $(id).onchange = e => { S[k] = e.target.checked; save(); if (k === 'music' && !S.music) stopMusic(); if (k === 'voice' && !S.voice) stopVoice(); };
 $('partClear').onclick = () => { S.parts = []; save(); renderGrown(); };
-$('forget').onclick = () => { PASSC = ''; try { localStorage.removeItem(PKEY); } catch (e) {} $('grown').hidden = true; show('gate'); };
+$('forget').onclick = () => { PASSC = ''; try { localStorage.removeItem(PKEY); } catch (e) {} $('passMsg').textContent = 'Passcode forgotten.'; renderGrown(); };
 let gearT = 0; const gear = $('gear');
 gear.addEventListener('pointerdown', e => { e.preventDefault(); $('gearHint').classList.add('on'); gearT = setTimeout(() => { gearT = 0; $('gearHint').classList.remove('on'); openGrown(); }, 1100); });
 for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) gear.addEventListener(ev, () => { if (gearT) { clearTimeout(gearT); gearT = 0; setTimeout(() => $('gearHint').classList.remove('on'), 1400); } });
 
 /* ---------- buttons ---------- */
-async function tryGate() { const v = $('gateIn').value.trim(); if (!v) return; audio(); PASSC = v; $('gateMsg').textContent = 'Checking…'; try { const r = await fetch(`${API}?op=ping`, { method: 'POST', headers: { 'x-maker-pass': PASSC } }); if (r.ok) { try { localStorage.setItem(PKEY, PASSC); } catch (e) {} $('gateMsg').textContent = ''; show('home'); renderShelf(); } else { PASSC = ''; $('gateMsg').textContent = 'That passcode did not work.'; } } catch (e) { $('gateMsg').textContent = 'Could not reach the server.'; } }
-$('gateGo').onclick = tryGate; $('gateIn').addEventListener('keydown', e => { if (e.key === 'Enter') tryGate(); });
+function savePass() { const v = $('passIn').value.trim(); if (!v) return; PASSC = v; try { localStorage.setItem(PKEY, PASSC); } catch (e) {} $('passIn').value = ''; $('passMsg').textContent = 'Passcode saved on this device.'; renderGrown(); }
+$('passGo').onclick = savePass; $('passIn').addEventListener('keydown', e => { if (e.key === 'Enter') savePass(); });
 $('make').onclick = startMake;
 $('stopBuild').onclick = () => { buildCancelled = true; if (buildAbort) buildAbort.abort(); };
 $('back').onclick = () => { sfx.tap(); if (M.change && cur) resume(); else goHome(); };
@@ -388,8 +383,8 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { hus
 /* ---------- loop ---------- */
 { const c = $('wand').firstElementChild, old = g; g = c.getContext('2d'); g.translate(84, 176); g.scale(2.1, 2.1); drawChar('unicorn', 0.2); g = old; }
 let last = performance.now();
-function loop(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt; if (M.mode !== 'play' && M.mode !== 'gate') drawPip(); requestAnimationFrame(loop); }
-show(PASSC ? 'home' : 'gate'); renderShelf(); requestAnimationFrame(loop);
+function loop(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt; if (M.mode !== 'play') drawPip(); requestAnimationFrame(loop); }
+show('home'); renderShelf(); requestAnimationFrame(loop);
 window.__genie = { fails, _launch: launch, M, S, onHeard, startMake, openChange, openGrown, goHome, doBuild, state: () => ({ mode: M.mode, busy, speaking, mic: micState, cur: cur && { name: cur.name, icon: cur.icon, how: cur.how, uses: cur.uses, len: cur.code.length }, live, lastError, convo }) };
 
 </script>

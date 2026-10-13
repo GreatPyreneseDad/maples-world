@@ -13,6 +13,10 @@ const BUILD_MODEL = Deno.env.get('MAKER_BUILD_MODEL') ?? 'claude-sonnet-5-5';
 
 const SB_URL = Deno.env.get('SUPABASE_URL') ?? '', SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const NEW_CAP = Number(Deno.env.get('MAKER_NEW_GAMES_PER_DAY') ?? 40), BUILD_CAP = Number(Deno.env.get('MAKER_BUILDS_PER_DAY') ?? 400);
+const GATED = ['publish', 'pubmusic', 'unpublish', 'models'];
+const COST: Record<string, number> = { build: 12, music: 10, talk: 2, stt: 1, tts: 1 };
+const IP_CAP = Number(Deno.env.get('MAKER_IP_POINTS_PER_DAY') ?? 600), IP_SALT = Deno.env.get('MAKER_IP_SALT') ?? PASS;
+async function sha(t: string) { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return Array.from(new Uint8Array(d)).map(b => b.toString(16).padStart(2, '0')).join(''); }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const db = (path: string, init: RequestInit = {}) => fetch(`${SB_URL}/rest/v1/${path}`, { ...init, headers: { apikey: SB_KEY, authorization: `Bearer ${SB_KEY}`, 'content-type': 'application/json', ...(init.headers ?? {}) } });
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type, x-maker-pass', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Max-Age': '86400' };
@@ -94,7 +98,10 @@ Deno.serve(async (req: Request) => {
     if (op === 'list') { const r = await db('wished_games?select=id,name,icon,how,created_at&hidden=eq.false&order=created_at.desc&limit=200'); return json({ games: r.ok ? await r.json() : [] }); }
     if (op === 'get') { const { id } = await req.json(); if (!UUID.test(String(id))) return json({ error: 'bad id' }, 400); const r = await db(`wished_games?select=id,name,icon,how,pre,code,music_url,engine_version&hidden=eq.false&id=eq.${id}`); const rows = r.ok ? await r.json() : []; return rows[0] ? json(rows[0]) : json({ error: 'not found' }, 404); }
   } catch (e) { return json({ error: clip((e as Error)?.message, 200) }, 500); }
-  if (!PASS || req.headers.get('x-maker-pass') !== PASS) { await new Promise(r => setTimeout(r, 600)); return json({ error: 'passcode' }, 401); }
+  // ---- the maker itself is open to everyone; the passcode only guards publishing (and the models probe) ----
+  if (GATED.includes(op) && (!PASS || req.headers.get('x-maker-pass') !== PASS)) { await new Promise(r => setTimeout(r, 600)); return json({ error: 'passcode' }, 401); }
+  // ---- per-visitor daily budget (salted IP hash, no raw IPs stored) ----
+  if (COST[op]) { try { const ip = req.headers.get('cf-connecting-ip') ?? req.headers.get('x-real-ip') ?? 'none'; const h = await sha(IP_SALT + ip); const r = await db('rpc/maker_ip_bump', { method: 'POST', body: JSON.stringify({ h, cost: COST[op], cap: IP_CAP }) }); if (r.ok && (await r.json()) === false) return json({ error: 'cap' }, 429); } catch (_) { /* budget check failed open */ } }
   try {
     // ---- grown-up only: publish / unpublish ----
     if (op === 'publish') { const b = await req.json(); const row = { name: clip(b.name, 60).trim() || 'A Wished Game', icon: clip(b.icon, 16) || '🎮', how: clip(b.how, 200), pre: clip(b.pre, 40000), code: clip(b.code, 60000), engine_version: clip(b.engine, 20) || ENGINE_VERSION, updated_at: new Date().toISOString() };
