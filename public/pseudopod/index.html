@@ -537,9 +537,15 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (state === 'play') togglePause(); });
-cv.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' || touch.id !== null) return; touch.id = e.pointerId; touch.sx = e.clientX; touch.sy = e.clientY; touch.x = touch.y = 0; });
+// a live finger count from touch events: pointerup can go missing on iOS (a second finger, a system gesture), and then the
+// stick would stay stuck in one direction. When the last finger lifts, or a new first finger lands, the stick is released.
+let nTouch = 0;
+const clearStick = () => { touch.id = null; touch.x = touch.y = 0; };
+addEventListener('touchstart', e => { nTouch = e.touches.length; }, { passive: true, capture: true });
+for (const ev of ['touchend', 'touchcancel']) addEventListener(ev, e => { nTouch = e.touches.length; if (nTouch === 0) { clearStick(); touch.reach = false; } }, { passive: true, capture: true });
+cv.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; if (touch.id !== null && nTouch > 0) return; touch.id = e.pointerId; touch.sx = e.clientX; touch.sy = e.clientY; touch.x = touch.y = 0; });
 addEventListener('pointermove', e => { if (e.pointerId !== touch.id) return; let x = (e.clientX - touch.sx) / 46, y = (e.clientY - touch.sy) / 46; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } touch.x = x; touch.y = y; });
-const endTouch = e => { if (e.pointerId === touch.id) { touch.id = null; touch.x = touch.y = 0; } };
+const endTouch = e => { if (e.pointerId === touch.id) clearStick(); };
 addEventListener('pointerup', endTouch); addEventListener('pointercancel', endTouch);
 const rb = $('reach');
 rb.addEventListener('pointerdown', e => { e.preventDefault(); touch.reach = true; });
